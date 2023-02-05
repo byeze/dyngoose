@@ -13,7 +13,7 @@ You can also [define custom types](#custom-attribute-types).
 | `@Dyngoose.Attribute.StringSet` | `SS` | `string[]` | Stores an array of string values. |
 | `@Dyngoose.Attribute.NumberSet` | `NS` | `number[]` | Stores an array of number values. |
 | `@Dyngoose.Attribute.BinarySet` | `BS` | `Buffer[]` | Stores an array of binary values. |
-| `@Dyngoose.Attribute.List` | `L` | `undefined` | Not implemented. |
+| `@Dyngoose.Attribute.List` | `L` | `any[]` | Stores an array of values. |
 | `@Dyngoose.Attribute.Map` | `M` | `Object` | Stores an object as a DynamoDB Map, allowing for querying and filtering of values within the map. |
 | [`@Dyngoose.Attribute.Any`](dyngooseattributeany) | `S` | `Object` | Stores an object as a JSON-encoded string in DynamoDB, does not allow querying or filtering of child attributes. |
 | [`@Dyngoose.Attribute.Date`](dyngooseattributedate) | `S` or `N` | `Date` | Stores a Date value. By default stores values in a ISO 8601 formatted string. You can use options to store values as Unix timestamps. |
@@ -63,6 +63,22 @@ The `Any` attribute is very useful. It stores any JavaScript as a stringified JS
 It's very useful to define your property as an interface, this will help ensure you stick to standard value formats. You don't have to though, you can use the `any` property.
 
 Since `Any` values are JSON-encoded strings, you generally cannot perform any useful querying or filtering on these attributes. If you want to query, use a [`Map`](#dyngooseattributemap) instead.
+
+#### Dyngoose.Attribute.List
+
+Allows you to store an array of values. The values can be of any type, including other `List` or `Map` attributes.
+
+```typescript
+  @Dyngoose.Attribute.List()
+  public list: string[]
+```
+
+For example:
+
+```typescript
+  @Dyngoose.Attribute.List()
+  public cart: { productId: string, quantity: number }[]
+```
 
 #### Dyngoose.Attribute.Date
 

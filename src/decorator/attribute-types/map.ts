@@ -97,7 +97,7 @@ export class MapAttributeType<Value> extends AttributeType<Value, MapAttributeMe
     return mapValue
   }
 
-  toJSON(mapValue: Value): any {
+  toJSON(mapValue: any): any {
     const json: any = {}
 
     for (const propertyName of Object.keys(mapValue)) {

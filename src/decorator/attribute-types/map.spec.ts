@@ -24,7 +24,7 @@ interface ITestContactMap {
 
 @Dyngoose.$Table({
   name: `MapTest-${Math.random()}`,
-})
+  })
 export class MapTestTable extends Dyngoose.Table {
   @Dyngoose.$PrimaryKey('id')
   public static readonly primaryKey: Dyngoose.Query.PrimaryKey<MapTestTable, number, void>
@@ -37,33 +37,33 @@ export class MapTestTable extends Dyngoose.Table {
 
   @Dyngoose.Attribute.Map({
     attributes: {
-      first: Dyngoose.Attribute.String(),
-      middle: Dyngoose.Attribute.String(),
-      last: Dyngoose.Attribute.String(),
-      level: Dyngoose.Attribute.Number(),
-      nick: Dyngoose.Attribute.String(),
+    first: Dyngoose.Attribute.String(),
+    middle: Dyngoose.Attribute.String(),
+    last: Dyngoose.Attribute.String(),
+    level: Dyngoose.Attribute.Number(),
+    nick: Dyngoose.Attribute.String(),
     },
-  })
+    })
   public person: ITestMap
 
   @Dyngoose.Attribute.Map({
     attributes: {
-      name: Dyngoose.Attribute.Map({
-        attributes: {
-          first: Dyngoose.Attribute.String({ lowercase: true }),
-          last: Dyngoose.Attribute.String({ uppercase: true }),
-        },
+    name: Dyngoose.Attribute.Map({
+      attributes: {
+      first: Dyngoose.Attribute.String({ lowercase: true }),
+      last: Dyngoose.Attribute.String({ uppercase: true }),
+      },
       }),
-      address: Dyngoose.Attribute.Map({
-        attributes: {
-          line1: Dyngoose.Attribute.String(),
-          city: Dyngoose.Attribute.String(),
-          state: Dyngoose.Attribute.String(),
-        },
+    address: Dyngoose.Attribute.Map({
+      attributes: {
+      line1: Dyngoose.Attribute.String(),
+      city: Dyngoose.Attribute.String(),
+      state: Dyngoose.Attribute.String(),
+      },
       }),
-      dob: Dyngoose.Attribute.Date({ dateOnly: true }),
+    dob: Dyngoose.Attribute.Date({ dateOnly: true }),
     },
-  })
+    })
   public contact: ITestContactMap
 }
 

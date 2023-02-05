@@ -9,6 +9,7 @@ import { NumberAttributeType } from './number'
 import { NumberSetAttributeType } from './number-set'
 import { StringAttributeType } from './string'
 import { StringSetAttributeType } from './string-set'
+import { ListAttributeType } from './list'
 
 interface AttributeTypeMap {
   Any: AnyAttributeType
@@ -20,6 +21,7 @@ interface AttributeTypeMap {
   NumberSet: NumberSetAttributeType
   String: StringAttributeType
   StringSet: StringSetAttributeType
+  List: ListAttributeType
 }
 
 interface AttributeMetadataMap {
@@ -32,6 +34,7 @@ interface AttributeMetadataMap {
   NumberSet: Metadata.AttributeType.NumberSet
   String: Metadata.AttributeType.String
   StringSet: Metadata.AttributeType.StringSet
+  List: Metadata.AttributeType.List
 }
 
 const AttributeTypes = {
@@ -44,6 +47,7 @@ const AttributeTypes = {
   NumberSet: NumberSetAttributeType,
   String: StringAttributeType,
   StringSet: StringSetAttributeType,
+  List: ListAttributeType,
 }
 
 export interface AttributeDefinition {
@@ -100,6 +104,8 @@ Attribute.NumberSet = (options?: Metadata.AttributeType.NumberSet) => Attribute(
 
 Attribute.String = (options?: Metadata.AttributeType.String) => Attribute('String', options)
 Attribute.StringSet = (options?: Metadata.AttributeType.StringSet) => Attribute('StringSet', options)
+
+Attribute.List = (options: Metadata.AttributeType.List): AttributeDefinition => Attribute('List', options)
 
 Attribute.Map = <Value>(options: Metadata.AttributeType.Map<Value>): AttributeDefinition => {
   const define = function (record: Table, propertyName: string): void {
