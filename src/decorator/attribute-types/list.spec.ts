@@ -18,7 +18,7 @@ export class ListTestTable extends Dyngoose.Table {
   @Dyngoose.Attribute.Number()
   id: number
 
-  @Dyngoose.Attribute.List({})
+  @Dyngoose.Attribute.List()
   public likes: ITestList[]
 }
 

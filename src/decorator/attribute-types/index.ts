@@ -105,7 +105,7 @@ Attribute.NumberSet = (options?: Metadata.AttributeType.NumberSet) => Attribute(
 Attribute.String = (options?: Metadata.AttributeType.String) => Attribute('String', options)
 Attribute.StringSet = (options?: Metadata.AttributeType.StringSet) => Attribute('StringSet', options)
 
-Attribute.List = (options: Metadata.AttributeType.List): AttributeDefinition => Attribute('List', options)
+Attribute.List = (options?: Metadata.AttributeType.List): AttributeDefinition => Attribute('List', options)
 
 Attribute.Map = <Value>(options: Metadata.AttributeType.Map<Value>): AttributeDefinition => {
   const define = function (record: Table, propertyName: string): void {

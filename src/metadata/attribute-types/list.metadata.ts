@@ -7,4 +7,4 @@ export type ListType = [
   any
 ]
 
-export interface ListAttributeMetadata extends AttributeMetadata<ListType> {}
+export interface ListAttributeMetadata extends Partial<AttributeMetadata<ListType>> {}
