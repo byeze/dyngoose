@@ -1,5 +1,6 @@
 {
   "cSpell.words": [
     "dyngoose"
-  ]
+  ],
+  "deno.enable": false
 }
