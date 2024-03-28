@@ -16,7 +16,7 @@ export class ListTestTable extends Dyngoose.Table {
   public static readonly documentClient: Dyngoose.DocumentClient<ListTestTable>
 
   @Dyngoose.Attribute.Number()
-  id: number
+    id: number
 
   @Dyngoose.Attribute.List()
   public likes: ITestList[]

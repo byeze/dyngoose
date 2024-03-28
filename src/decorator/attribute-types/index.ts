@@ -52,7 +52,7 @@ const AttributeTypes = {
   Number: NumberAttributeType,
   NumberSet: NumberSetAttributeType,
   String: StringAttributeType,
-  StringSet: StringSetAttributeType
+  StringSet: StringSetAttributeType,
 }
 
 export interface AttributeDefinition {
