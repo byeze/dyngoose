@@ -1,9 +1,11 @@
-import { Metadata, Table } from '../..'
+import { type Metadata, type Table } from '../..'
+import { type MapBaseValue } from '../../metadata/attribute-types/map.metadata'
 import { AnyAttributeType } from './any'
 import { BinaryAttributeType } from './binary'
 import { BinarySetAttributeType } from './binary-set'
 import { BooleanAttributeType } from './boolean'
 import { DateAttributeType } from './date'
+import { DynamicAttributeType } from './dynamic'
 import { MapAttributeType } from './map'
 import { NumberAttributeType } from './number'
 import { NumberSetAttributeType } from './number-set'
@@ -17,6 +19,7 @@ interface AttributeTypeMap {
   BinarySet: BinarySetAttributeType
   Boolean: BooleanAttributeType
   Date: DateAttributeType
+  Dynamic: DynamicAttributeType
   Number: NumberAttributeType
   NumberSet: NumberSetAttributeType
   String: StringAttributeType
@@ -30,6 +33,7 @@ interface AttributeMetadataMap {
   BinarySet: Metadata.AttributeType.BinarySet
   Boolean: Metadata.AttributeType.Boolean
   Date: Metadata.AttributeType.Date
+  Dynamic: Metadata.AttributeType.Dynamic
   Number: Metadata.AttributeType.Number
   NumberSet: Metadata.AttributeType.NumberSet
   String: Metadata.AttributeType.String
@@ -43,11 +47,12 @@ const AttributeTypes = {
   BinarySet: BinarySetAttributeType,
   Boolean: BooleanAttributeType,
   Date: DateAttributeType,
+  Dynamic: DynamicAttributeType,
+  List: ListAttributeType,
   Number: NumberAttributeType,
   NumberSet: NumberSetAttributeType,
   String: StringAttributeType,
-  StringSet: StringSetAttributeType,
-  List: ListAttributeType,
+  StringSet: StringSetAttributeType
 }
 
 export interface AttributeDefinition {
@@ -55,15 +60,15 @@ export interface AttributeDefinition {
   getAttribute: (record: Table, propertyName: string) => any
 }
 
-export function Attribute<T extends keyof AttributeTypeMap>(type: T, metadata?: AttributeMetadataMap[T]): AttributeDefinition {
+export function Attribute<T extends keyof AttributeTypeMap>(type?: T, metadata?: AttributeMetadataMap[T]): AttributeDefinition {
   const define = function (record: Table, propertyName: string): void {
-    const AttributeTypeClass: any = AttributeTypes[type]
+    const AttributeTypeClass: any = AttributeTypes[type ?? 'Dynamic']
     const decorator = new AttributeTypeClass(record, propertyName, metadata)
     decorator.decorate()
   }
 
   define.getAttribute = function (record: Table, propertyName: string): any {
-    const AttributeTypeClass: any = AttributeTypes[type]
+    const AttributeTypeClass: any = AttributeTypes[type ?? 'Dynamic']
     const decorator = new AttributeTypeClass(record, propertyName, metadata)
     return decorator.attribute
   }
@@ -77,6 +82,13 @@ export function Attribute<T extends keyof AttributeTypeMap>(type: T, metadata?: 
  * Can be used to store any values. Values will be parsed back into objects.
  */
 Attribute.Any = (options?: Metadata.AttributeType.Any) => Attribute('Any', options)
+
+/**
+ * Converts any JavaScript object into a DynamoDB attribute value.
+ *
+ * Uses AWS.DynamoDB.Converter (marshall and unmarshall).
+ */
+Attribute.Dynamic = (options?: Metadata.AttributeType.Any) => Attribute('Dynamic', options)
 
 Attribute.Binary = (options?: Metadata.AttributeType.Binary) => Attribute('Binary', options)
 Attribute.BinarySet = (options?: Metadata.AttributeType.BinarySet) => Attribute('BinarySet', options)
@@ -92,6 +104,8 @@ Attribute.Boolean = (options?: Metadata.AttributeType.Boolean) => Attribute('Boo
  */
 Attribute.Date = (options?: Metadata.AttributeType.Date) => Attribute('Date', options)
 
+Attribute.List = (options?: Metadata.AttributeType.List) => Attribute('List', options)
+
 /**
  * For all your numbers needs.
  */
@@ -104,10 +118,9 @@ Attribute.NumberSet = (options?: Metadata.AttributeType.NumberSet) => Attribute(
 
 Attribute.String = (options?: Metadata.AttributeType.String) => Attribute('String', options)
 Attribute.StringSet = (options?: Metadata.AttributeType.StringSet) => Attribute('StringSet', options)
-
 Attribute.List = (options?: Metadata.AttributeType.List): AttributeDefinition => Attribute('List', options)
 
-Attribute.Map = <Value>(options: Metadata.AttributeType.Map<Value>): AttributeDefinition => {
+Attribute.Map = <Value extends MapBaseValue>(options: Metadata.AttributeType.Map<Value>): AttributeDefinition => {
   const define = function (record: Table, propertyName: string): void {
     const decorator = new MapAttributeType<Value>(record, propertyName, options as any)
     decorator.decorate()

@@ -1,11 +1,11 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
-import { readdirSync, readFileSync } from 'fs'
+import { readdir, readFile } from 'fs/promises'
 import * as _ from 'lodash'
 import { join } from 'path'
-import { PrimaryKey } from '../query'
-import { Table } from '../table'
+import type { PrimaryKey } from '../query'
+import type { Table } from '../table'
 import { isDyngooseTableClass } from './is'
-import { MigrateTablesInput } from './migrate'
+import type { MigrateTablesInput } from './migrate'
 
 export interface SeedTablesInput extends MigrateTablesInput {
   seedsDirectory: string
@@ -14,7 +14,7 @@ export interface SeedTablesInput extends MigrateTablesInput {
 
 export default async function seedTables(input: SeedTablesInput): Promise<void> {
   const log = input.log == null ? console.log : input.log
-  const seedFiles = readdirSync(input.seedsDirectory)
+  const seedFiles = await readdir(input.seedsDirectory)
   const tableFileSuffix = input.tableFileSuffix.substr(0, 1) === '.' ? input.tableFileSuffix : `.${input.tableFileSuffix}`
 
   for (const file of seedFiles) {
@@ -22,9 +22,9 @@ export default async function seedTables(input: SeedTablesInput): Promise<void> 
     let records = []
 
     if (file.endsWith('.seed.json')) {
-      records = JSON.parse(readFileSync(filePath, 'utf8'))
+      records = JSON.parse(await readFile(filePath, 'utf8'))
     } else if (file.endsWith('.seed.js')) {
-      const seedModule: Promise<any> | Function | any[] = require(filePath)
+      const seedModule: Promise<any> | (() => any) | any[] = require(filePath)
 
       if (typeof seedModule === 'function') {
         const seedModuleReturn = seedModule()

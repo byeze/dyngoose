@@ -1,3 +1,201 @@
+## [4.10.2](https://github.com/benhutchins/dyngoose/compare/v4.10.1...v4.10.2) (2024-03-28)
+
+
+### Bug Fixes
+
+* querying maps when the attribute and property names don't match ([d05b57f](https://github.com/benhutchins/dyngoose/commit/d05b57f27c3a1c7d27bc64190c370291f0cadc23)), closes [#678](https://github.com/benhutchins/dyngoose/issues/678)
+
+## [4.10.1](https://github.com/benhutchins/dyngoose/compare/v4.10.0...v4.10.1) (2024-03-07)
+
+
+### Bug Fixes
+
+* using not contains query filter ([98d3c7f](https://github.com/benhutchins/dyngoose/commit/98d3c7fb79eb617c1c79968d6614b23ea736a279))
+
+# [4.10.0](https://github.com/benhutchins/dyngoose/compare/v4.9.1...v4.10.0) (2023-11-16)
+
+
+### Bug Fixes
+
+* using a conditional check on a nowOnUpdate Date attribute ([074fe81](https://github.com/benhutchins/dyngoose/commit/074fe819eae8f4471cad702d9063e561ab0650b2))
+
+
+### Features
+
+* expose a way to get the Transaction write items ([d0d0c6a](https://github.com/benhutchins/dyngoose/commit/d0d0c6a2e1105c2afbb69a508a984eca4282c53f))
+
+## [4.9.1](https://github.com/benhutchins/dyngoose/compare/v4.9.0...v4.9.1) (2023-10-30)
+
+
+### Bug Fixes
+
+* make MagicSearch.page public again ([b9de391](https://github.com/benhutchins/dyngoose/commit/b9de39152eb59ccdda5d0f0ac9663eee300f5be5))
+
+# [4.9.0](https://github.com/benhutchins/dyngoose/compare/v4.8.2...v4.9.0) (2023-10-30)
+
+
+### Features
+
+* async generators ([28cc5f3](https://github.com/benhutchins/dyngoose/commit/28cc5f34770d0aeb76d20ae4e66bd960f6446a2e))
+
+## [4.8.2](https://github.com/benhutchins/dyngoose/compare/v4.8.1...v4.8.2) (2023-10-14)
+
+
+### Bug Fixes
+
+* store original value when removing an attribute ([0f444ab](https://github.com/benhutchins/dyngoose/commit/0f444abc4a9f3e367017ab38febabacee5900c35))
+
+## [4.8.1](https://github.com/benhutchins/dyngoose/compare/v4.8.0...v4.8.1) (2023-10-14)
+
+
+### Bug Fixes
+
+* tracking when the entire document is loaded ([e22902a](https://github.com/benhutchins/dyngoose/commit/e22902add8aeaee20e596de6c0098b2139dd16b9))
+
+# [4.8.0](https://github.com/benhutchins/dyngoose/compare/v4.7.1...v4.8.0) (2023-10-14)
+
+
+### Bug Fixes
+
+* **afterSave:** updatedAttributes and deletedAttributes always empty ([c47aeb7](https://github.com/benhutchins/dyngoose/commit/c47aeb7e37fe074b8fe00db1fae231749a65013a))
+
+
+### Features
+
+* abort controller support ([77da825](https://github.com/benhutchins/dyngoose/commit/77da82534352ba956eefc26cc3c9bdeed1ab635f))
+
+## [4.7.1](https://github.com/benhutchins/dyngoose/compare/v4.7.0...v4.7.1) (2023-09-15)
+
+
+### Bug Fixes
+
+* restore support for AWS XRAY ([1d972ba](https://github.com/benhutchins/dyngoose/commit/1d972ba1a5f521219cb2468f4fd91fdb25d243f7))
+
+# [4.7.0](https://github.com/benhutchins/dyngoose/compare/v4.6.0...v4.7.0) (2023-09-15)
+
+
+### Bug Fixes
+
+* re-add support for DYNAMO_ACCESS_KEY_ID & DYNAMO_SECRET_ACCESS_KEY ([b438325](https://github.com/benhutchins/dyngoose/commit/b43832504b17d6e716f277893aed0a65267e04e0))
+
+
+### Features
+
+* allow removing multiple properties or attributes ([4bb1ca4](https://github.com/benhutchins/dyngoose/commit/4bb1ca46ba50881e5ede2e3d05b13a8a2eb1d31d))
+
+# [4.6.0](https://github.com/benhutchins/dyngoose/compare/v4.5.0...v4.6.0) (2023-09-14)
+
+
+### Features
+
+* add support for dynamic attributes ([423cbd0](https://github.com/benhutchins/dyngoose/commit/423cbd0b5dd134f858846ff39a72395ec2b33bf3)), closes [#669](https://github.com/benhutchins/dyngoose/issues/669) [#628](https://github.com/benhutchins/dyngoose/issues/628) [#638](https://github.com/benhutchins/dyngoose/issues/638)
+
+# [4.5.0](https://github.com/benhutchins/dyngoose/compare/v4.4.0...v4.5.0) (2023-09-14)
+
+
+### Bug Fixes
+
+* expose proper typing for isTrulyEmpty ([ae04049](https://github.com/benhutchins/dyngoose/commit/ae0404929c4295f5a828d65594baf53bffee1e04))
+
+
+### Features
+
+* accept number and string arrays on set properties ([72b57cc](https://github.com/benhutchins/dyngoose/commit/72b57cc75ab0aefcb18f54af31835dbd7159890d))
+
+# [4.4.0](https://github.com/benhutchins/dyngoose/compare/v4.3.1...v4.4.0) (2023-09-14)
+
+
+### Features
+
+* allow arrays to be passed via set ([7c19ff6](https://github.com/benhutchins/dyngoose/commit/7c19ff679ae2e05a756cd1186abc0755e05eece3))
+
+## [4.3.1](https://github.com/benhutchins/dyngoose/compare/v4.3.0...v4.3.1) (2023-09-14)
+
+
+### Bug Fixes
+
+* convert string sets to an array when outputting to JSON ([6258812](https://github.com/benhutchins/dyngoose/commit/62588126af305cb21d33f07f667b499803c0863c))
+
+# [4.3.0](https://github.com/benhutchins/dyngoose/compare/v4.2.0...v4.3.0) (2023-09-14)
+
+
+### Features
+
+* improve searching using contains operator for sets ([7ae830b](https://github.com/benhutchins/dyngoose/commit/7ae830b41c5092f8594c85f1b065c3a2cf2d41db)), closes [#667](https://github.com/benhutchins/dyngoose/issues/667)
+
+# [4.2.0](https://github.com/benhutchins/dyngoose/compare/v4.1.2...v4.2.0) (2023-09-14)
+
+
+### Bug Fixes
+
+* creation of update expression duplicated remove segment ([d21bfe4](https://github.com/benhutchins/dyngoose/commit/d21bfe4b6352800236fc9de9f9c33adef5485947))
+* migrateTable comparison of indexes ([e1599c7](https://github.com/benhutchins/dyngoose/commit/e1599c7814a11e74148f1baf06d38fad45de4613)), closes [#645](https://github.com/benhutchins/dyngoose/issues/645)
+
+
+### Features
+
+* add support for using add and remove update operators with sets ([33bf76e](https://github.com/benhutchins/dyngoose/commit/33bf76ed0bad8f0059296d57331ec1ff63a7000e))
+* allow sets to continue to be native javascript arrays ([c137a74](https://github.com/benhutchins/dyngoose/commit/c137a74879e370be13ae7c4970381c4a1b2d4d20)), closes [#667](https://github.com/benhutchins/dyngoose/issues/667)
+
+## [4.1.2](https://github.com/benhutchins/dyngoose/compare/v4.1.1...v4.1.2) (2023-08-25)
+
+
+### Bug Fixes
+
+* cdk utility needs to use unique resource id for every table ([c8c6f0b](https://github.com/benhutchins/dyngoose/commit/c8c6f0b63d63e17be31baaefa39ffd27ebce411e))
+
+## [4.1.1](https://github.com/benhutchins/dyngoose/compare/v4.1.0...v4.1.1) (2023-08-15)
+
+
+### Bug Fixes
+
+* clear update operators after saving ([cc97567](https://github.com/benhutchins/dyngoose/commit/cc97567fda91badeba8db1ed57559e3f55c45927))
+* compatibility with TypeScript 5.1 ([a634d68](https://github.com/benhutchins/dyngoose/commit/a634d684f54bc5b250336401fee4b0f1720dea04))
+
+# [4.1.0](https://github.com/benhutchins/dyngoose/compare/v4.0.0...v4.1.0) (2023-04-10)
+
+
+### Bug Fixes
+
+* map attributes using independent property names ([57a0132](https://github.com/benhutchins/dyngoose/commit/57a0132bedcbd8ce1dcafc3d9596a20a2169547e))
+
+
+### Features
+
+* arbitrary attributes on maps ([c6fce9d](https://github.com/benhutchins/dyngoose/commit/c6fce9dbfac2202d859dca619d92f974bbbc4776))
+* standardize to primary key nomenclature ([b03b26a](https://github.com/benhutchins/dyngoose/commit/b03b26a0c6d1b4b2a1c7a8b94a39707fed300218))
+
+# [4.0.0](https://github.com/benhutchins/dyngoose/compare/v3.1.3...v4.0.0) (2023-04-08)
+
+
+### Bug Fixes
+
+* assign a default value for range key ([3f3de65](https://github.com/benhutchins/dyngoose/commit/3f3de65f1a4e278679f75722765dfa791a09d9fe)), closes [#569](https://github.com/benhutchins/dyngoose/issues/569)
+* **ci:** dynamodb port needs to be exposed ([d54a548](https://github.com/benhutchins/dyngoose/commit/d54a548dd6b8c8d4b3e621f0ed32b2f8bb370f12))
+* **ci:** running in container is breaking semantic-release ([424d8d5](https://github.com/benhutchins/dyngoose/commit/424d8d5c392b1eadc320904b99ed99f6bd805dcb))
+* conditions when using a transaction ([95d4cdd](https://github.com/benhutchins/dyngoose/commit/95d4cdd37f8c8e09bf28e26e5fcc1a39d2786c69)), closes [#609](https://github.com/benhutchins/dyngoose/issues/609)
+* ensure date attribute with nowOnUpdate update on partial updates ([374d02e](https://github.com/benhutchins/dyngoose/commit/374d02ed6510e6d00d32c139aed5fdf22e41d32a)), closes [#613](https://github.com/benhutchins/dyngoose/issues/613)
+* passing undefined to Table.new clears default values ([ea33dd3](https://github.com/benhutchins/dyngoose/commit/ea33dd3462d0d285d640e735a5e0eaf97590d1ee)), closes [#602](https://github.com/benhutchins/dyngoose/issues/602)
+
+
+### Features
+
+* add support for List attributes ([4abf8f4](https://github.com/benhutchins/dyngoose/commit/4abf8f4c42727b249f772c74dfef079fe733486a)), closes [#608](https://github.com/benhutchins/dyngoose/issues/608)
+* convert sets to use Set types ([f35ace4](https://github.com/benhutchins/dyngoose/commit/f35ace4ff61f00197468a1027060fe9bfba36dd3))
+* generate CDK table ([1162d6e](https://github.com/benhutchins/dyngoose/commit/1162d6e653e5b8a083e00b91e0b98dc62bc3f67f))
+* improve autoscaling support and interfaces ([2f80f0b](https://github.com/benhutchins/dyngoose/commit/2f80f0b787c1d7ded372eee29738b40c1a6b7868)), closes [#544](https://github.com/benhutchins/dyngoose/issues/544)
+* upgrade to aws-sdk v3 ([e4fca19](https://github.com/benhutchins/dyngoose/commit/e4fca19bf4dd545b42e87f02f54fab324bb466e4))
+
+
+### BREAKING CHANGES
+
+* this converts StringSet, NumberSet, and BinarySet to
+use a Set type in TypeScript, which provides better typing and ensures
+values are unique. This will later help with processing the changes to
+sets only, rather than having to re-save the entire set of values which
+is inefficient for larger sets.
+* Very necessary.
+
 ## [3.1.3](https://github.com/benhutchins/dyngoose/compare/v3.1.2...v3.1.3) (2022-07-28)
 
 

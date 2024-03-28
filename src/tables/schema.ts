@@ -1,12 +1,13 @@
-import { DynamoDB } from 'aws-sdk'
-import { Attribute } from '../attribute'
-import { MapAttributeType } from '../decorator/attribute-types/map'
+import { type CreateTableInput, type DynamoDB } from '@aws-sdk/client-dynamodb'
+import { type Attribute } from '../attribute'
+import { type MapAttributeType } from '../decorator/attribute-types/map'
 import { SchemaError } from '../errors'
-import { IThroughput } from '../interfaces'
-import * as Metadata from '../metadata'
+import { type AttributeMap, type IThroughput } from '../interfaces'
+import type * as Metadata from '../metadata'
 import * as Query from '../query'
-import { ITable, Table } from '../table'
+import { type ITable, type Table } from '../table'
 import { createTableInput } from './create-table-input'
+import { last } from 'lodash'
 
 export class Schema {
   public isDyngoose = true
@@ -30,7 +31,7 @@ export class Schema {
   /**
    * The desired Throughput for this table in DynamoDB
    */
-  public throughput: IThroughput
+  public throughput?: IThroughput
 
   /**
    * Holds the DynamoDB Client for the table
@@ -38,22 +39,20 @@ export class Schema {
   public dynamo: DynamoDB
 
   // List of attributes this table has
-  private readonly attributes: Map<string, Attribute<any>> = new Map()
+  private readonly attributes = new Map<string, Attribute<any>>()
 
   constructor(private readonly table: ITable<any>) {}
 
   public setMetadata(metadata: Metadata.Table): void {
-    this.options = metadata
+    this.options = Object.assign({
+      // default options for a table
+      billingMode: 'PAY_PER_REQUEST',
+      backup: true,
+    }, metadata)
 
-    this.setThroughput(this.options.throughput != null ? this.options.throughput : {
-      read: 5,
-      write: 5,
-      autoScaling: {
-        targetUtilization: 70,
-        minCapacity: 5,
-        maxCapacity: 40000,
-      },
-    })
+    if (this.options.throughput != null) {
+      this.setThroughput(this.options.throughput)
+    }
   }
 
   public defineAttributeProperties(): void {
@@ -135,14 +134,6 @@ export class Schema {
       }
     } else {
       this.throughput = throughput
-
-      if (this.throughput.autoScaling === true) {
-        this.throughput.autoScaling = {
-          targetUtilization: 70,
-          minCapacity: 5,
-          maxCapacity: 40000,
-        }
-      }
     }
 
     if (this.throughput.read == null || this.throughput.write == null) {
@@ -182,25 +173,42 @@ export class Schema {
   }
 
   public getAttributeByPropertyName(propertyName: string): Attribute<any> {
-    let attribute: Attribute<any> | undefined
+    const attributes = this.getAttributePathByPropertyName(propertyName)
+    const attribute = last(attributes)
+
+    if (attribute == null) {
+      throw new SchemaError(`Schema for ${this.name} has no attribute by property name ${propertyName}`)
+    } else {
+      return attribute
+    }
+  }
+
+  public transformPropertyPathToAttributePath(propertyName: string): string {
+    const attributes = this.getAttributePathByPropertyName(propertyName)
+    const segments = attributes.map(attribute => attribute.name)
+    return segments.join('.')
+  }
+
+  public getAttributePathByPropertyName(propertyName: string): Array<Attribute<any>> {
+    const attributes: Array<Attribute<any>> = []
 
     if (propertyName.includes('.')) {
       const nameSegments = propertyName.split('.')
-      const firstSegment = nameSegments.shift()
+      const firstSegment = nameSegments.shift()!
+      const newSegments: string[] = []
+      let attribute = this.findAttributeByPropertyName(firstSegment)
 
-      if (firstSegment != null) {
-        for (const attr of this.attributes.values()) {
-          if (attr.propertyName === firstSegment) {
-            attribute = attr
-          }
-        }
+      if (attribute != null) {
+        attributes.push(attribute)
+        newSegments.push(attribute.name)
 
         for (const nameSegment of nameSegments) {
           if (attribute != null) {
-            const mapAttributes = (attribute.type as MapAttributeType<any>).attributes
-            mapAttributesFor: for (const mapAttribute of Object.values(mapAttributes)) {
-              if (mapAttribute.propertyName === nameSegment) {
-                attribute = mapAttribute
+            const children: Record<string, Attribute<any>> = (attribute.type as MapAttributeType<any>).attributes
+            mapAttributesFor: for (const childAttribute of Object.values(children)) {
+              if (childAttribute.propertyName === nameSegment) {
+                attribute = childAttribute
+                attributes.push(childAttribute)
                 break mapAttributesFor
               }
             }
@@ -208,18 +216,14 @@ export class Schema {
         }
       }
     } else {
-      for (const attr of this.attributes.values()) {
-        if (attr.propertyName === propertyName) {
-          attribute = attr
-        }
+      const attribute = this.findAttributeByPropertyName(propertyName)
+
+      if (attribute != null) {
+        attributes.push(attribute)
       }
     }
 
-    if (attribute == null) {
-      throw new SchemaError(`Schema for ${this.name} has no attribute by property name ${propertyName}`)
-    } else {
-      return attribute
-    }
+    return attributes
   }
 
   public addAttribute(attribute: Attribute<any>): Attribute<any> {
@@ -231,19 +235,19 @@ export class Schema {
     return attribute
   }
 
-  public setPrimaryKey(hashKey: string, rangeKey: string | undefined, propertyName: string): void {
-    const hash = this.getAttributeByName(hashKey)
+  public setPrimaryKey(primaryKey: string, sortKey: string | undefined, propertyName: string): void {
+    const hash = this.getAttributeByName(primaryKey)
     if (hash == null) {
-      throw new SchemaError(`Specified hashKey ${hashKey} attribute for the PrimaryKey for table ${this.name} does not exist`)
+      throw new SchemaError(`Specified primaryKey ${primaryKey} attribute for the PrimaryKey for table ${this.name} does not exist`)
     }
 
     let range: Attribute<any> | undefined
 
-    if (rangeKey != null) {
-      range = this.getAttributeByName(rangeKey)
+    if (sortKey != null) {
+      range = this.getAttributeByName(sortKey)
 
       if (range == null) {
-        throw new SchemaError(`Specified rangeKey ${rangeKey} attribute for the PrimaryKey for table ${this.name} does not exist`)
+        throw new SchemaError(`Specified sortKey ${sortKey} attribute for the PrimaryKey for table ${this.name} does not exist`)
       }
     }
 
@@ -254,7 +258,7 @@ export class Schema {
     }
   }
 
-  public createTableInput(forCloudFormation = false): DynamoDB.CreateTableInput {
+  public createTableInput(forCloudFormation = false): CreateTableInput {
     return createTableInput(this, forCloudFormation)
   }
 
@@ -262,8 +266,8 @@ export class Schema {
     return this.createTableInput(true)
   }
 
-  public toDynamo(record: Table | Map<string, any>): DynamoDB.AttributeMap {
-    const attributeMap: DynamoDB.AttributeMap = {}
+  public toDynamo(record: Table | Map<string, any>): AttributeMap {
+    const attributeMap: AttributeMap = {}
 
     for (const [attributeName, attribute] of this.attributes.entries()) {
       // there is a quirk with the typing of Table.get, where we exclude all the default Table properties and therefore
@@ -277,5 +281,13 @@ export class Schema {
     }
 
     return attributeMap
+  }
+
+  private findAttributeByPropertyName(propertyName: string): Attribute<any> | undefined {
+    for (const attribute of this.attributes.values()) {
+      if (attribute.propertyName === propertyName) {
+        return attribute
+      }
+    }
   }
 }

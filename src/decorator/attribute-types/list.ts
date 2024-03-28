@@ -1,26 +1,22 @@
-import { DynamoDB } from 'aws-sdk'
-import { DynamoAttributeType } from '../../dyngoose'
-import { AnyAttributeMetadata } from '../../metadata/attribute-types/any.metadata'
+import { type AttributeValue } from '@aws-sdk/client-dynamodb'
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb'
+import { DynamoAttributeType } from '../../dynamo-attribute-types'
+import { type ListAttributeMetadata } from '../../metadata/attribute-types/list.metadata'
 import { AttributeType } from '../../tables/attribute-type'
-import { IAttributeType } from '../../interfaces'
 
 type Value = any[]
-type Metadata = AnyAttributeMetadata
+type Metadata = ListAttributeMetadata
 
-export class ListAttributeType extends AttributeType<Value, Metadata> implements IAttributeType<Value> {
+export class ListAttributeType extends AttributeType<Value, Metadata> {
   type = DynamoAttributeType.List
 
-  toDynamo(value: Value): DynamoDB.AttributeValue {
-    const transformation = DynamoDB.Converter.marshall({
-      list: value,
-    })
-    return transformation.list
+  toDynamo(value: Value): AttributeValue {
+    return marshall({ value }, this.metadata?.marshallOptions).value
   }
 
-  fromDynamo(value: DynamoDB.AttributeValue): Value | null {
-    const transformation = DynamoDB.Converter.unmarshall({
-      list: value,
-    })
-    return transformation.list as Value
+  fromDynamo(value: AttributeValue | null): Value | null {
+    return value == null
+      ? null
+      : unmarshall({ value }, this.metadata?.unmarshallOptions).value
   }
 }

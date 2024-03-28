@@ -14,11 +14,12 @@ module.exports = {
         asyncArrow: 'always',
       },
     ],
-    'comma-dangle': [
+    '@typescript-eslint/comma-dangle': [
       'error',
       'always-multiline',
     ],
-    'no-labels': 'off'
+    'no-labels': 'off',
+    '@typescript-eslint/no-non-null-assertion': 'off',
   },
   // "env": {
   //   "browser": true,
@@ -71,7 +72,6 @@ module.exports = {
   //     }
   //   ],
   //   "@typescript-eslint/no-misused-new": "error",
-  //   "@typescript-eslint/no-non-null-assertion": "error",
   //   "@typescript-eslint/no-unused-expressions": "error",
   //   "@typescript-eslint/prefer-function-type": "error",
   //   "@typescript-eslint/quotes": [
@@ -203,4 +203,4 @@ module.exports = {
   //   //   }
   //   // ]
   // }
-};
+}

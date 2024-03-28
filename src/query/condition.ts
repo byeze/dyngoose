@@ -1,6 +1,6 @@
-import { Table } from '../dyngoose'
-import { Filter } from './filters'
-import { MagicSearch } from './search'
+import { type Table } from '../dyngoose'
+import { type ContainsType, type Filter } from './filters'
+import { type MagicSearch } from './search'
 
 export class Condition<T extends Table, Attr, AttributeValueType> {
   private readonly key: Attr | string
@@ -123,7 +123,7 @@ export class Condition<T extends Table, Attr, AttributeValueType> {
    *
    * When using `.not().contains(value)` this checks for the absence of a subsequence, or absence of a value in a set.
    */
-  contains(value: AttributeValueType extends Array<infer E> ? E : AttributeValueType): MagicSearch<T> {
+  contains(value: ContainsType<AttributeValueType>): MagicSearch<T> {
     if (this._not) {
       this.filter = ['not contains', value as any]
     } else {

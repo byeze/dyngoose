@@ -1,4 +1,4 @@
-import { expect } from 'chai'
+import { expect, should } from 'chai'
 import { Table } from '../table'
 import { PrimaryKey } from './primary-key'
 
@@ -9,7 +9,7 @@ import {
 } from '../decorator'
 
 describe('Query/PrimaryKey', () => {
-  @TableDecorator({ name: 'QueryPrimaryKeyCardTable' })
+  @TableDecorator({ name: 'QueryPrimaryKeyCardTable', backup: false })
   class Card extends Table {
     @PrimaryKeyDecorator('id', 'title')
     public static readonly primaryKey: PrimaryKey<Card, number, string>
@@ -24,7 +24,7 @@ describe('Query/PrimaryKey', () => {
     public count: number
   }
 
-  @TableDecorator({ name: 'QueryPrimaryKeyTableWithDateRange' })
+  @TableDecorator({ name: 'QueryPrimaryKeyTableWithDateRange', backup: false })
   class TableWithDateRange extends Table {
     @PrimaryKeyDecorator('id', 'date')
     public static readonly primaryKey: PrimaryKey<TableWithDateRange, number, Date>
@@ -74,6 +74,22 @@ describe('Query/PrimaryKey', () => {
       expect(item).to.eq(undefined)
     })
 
+    it('should not find item using a query filter object when aborted', async () => {
+      const abortController = new AbortController()
+
+      await Card.new({ id: 10, title: 'abc' }).save()
+      abortController.abort()
+
+      let exception
+      try {
+        await primaryKey.get({ id: 10, title: 'abc' }, { abortSignal: abortController.signal })
+      } catch (ex) {
+        exception = ex
+      }
+
+      should().exist(exception)
+    })
+
     it('should find item using a query filter object', async () => {
       await Card.new({ id: 10, title: 'abc' }).save()
       const item = await primaryKey.get({ id: 10, title: 'abc' })
@@ -92,6 +108,22 @@ describe('Query/PrimaryKey', () => {
         expect(item.id).to.eq(10)
         expect(item.title).to.eq('abc')
       }
+    })
+
+    it('should not find item using hash and range arguments when aborted', async () => {
+      const abortController = new AbortController()
+      await Card.new({ id: 10, title: 'abc' }).save()
+
+      abortController.abort()
+
+      let exception
+      try {
+        await primaryKey.get(10, 'abc', { abortSignal: abortController.signal })
+      } catch (ex) {
+        exception = ex
+      }
+
+      should().exist(exception)
     })
 
     it('should allow date type to be the range', async () => {
@@ -187,6 +219,27 @@ describe('Query/PrimaryKey', () => {
       // Ordered by range key since it's "scan"
       expect(res.records[0].title).to.eq('aba')
       expect(res.records[1].title).to.eq('abc')
+    })
+
+    it('should not find items when aborted', async () => {
+      const abortController = new AbortController()
+
+      await Card.new({ id: 10, title: 'abc' }).save()
+      await Card.new({ id: 10, title: 'abd' }).save()
+      await Card.new({ id: 10, title: 'aba' }).save()
+      abortController.abort()
+
+      let exception
+      try {
+        await primaryKey.scan(null, {
+          abortSignal: abortController.signal,
+          limit: 2,
+        })
+      } catch (ex) {
+        exception = ex
+      }
+
+      should().exist(exception)
     })
   })
 

@@ -1,27 +1,29 @@
-import { DynamoDB } from 'aws-sdk'
+import { type QueryCommandInput, type QueryCommandOutput, type ScanCommandInput, type ScanCommandOutput } from '@aws-sdk/client-dynamodb'
 import { get, has, includes, isArray } from 'lodash'
-import { Attribute } from '../attribute'
+import { type Attribute } from '../attribute'
 import { HelpfulError, QueryError } from '../errors'
-import { Metadata } from '../index'
-import { ITable, Table } from '../table'
+import { type Metadata } from '../index'
+import { type Key } from '../interfaces/key.interface'
+import { type ITable, type Table } from '../table'
 import { Condition } from './condition'
 import { buildQueryExpression, keyConditionAllowedOperators } from './expression'
-import { AttributeNames, ComplexFilters, Filter, Filters } from './filters'
-import { GlobalSecondaryIndex } from './global-secondary-index'
-import { LocalSecondaryIndex } from './local-secondary-index'
+import { type AttributeNames, type ComplexFilters, type Filter, type Filters } from './filters'
+import { type GlobalSecondaryIndex } from './global-secondary-index'
+import { type LocalSecondaryIndex } from './local-secondary-index'
 import { QueryOutput } from './output'
-import { PrimaryKey } from './primary-key'
+import { type PrimaryKey } from './primary-key'
 import { buildProjectionExpression } from './projection-expression'
+import { type IRequestOptions } from '../connections'
 
 type Index<T extends Table> = PrimaryKey<T, any, any> | GlobalSecondaryIndex<T> | LocalSecondaryIndex<T> | string
 
 export interface MagicSearchInput<T extends Table> {
   limit?: number
-  exclusiveStartKey?: DynamoDB.Key
+  exclusiveStartKey?: Key
   attributes?: string[]
-  projectionExpression?: DynamoDB.ProjectionExpression
+  projectionExpression?: string
   rangeOrder?: 'ASC' | 'DESC'
-  consistent?: DynamoDB.ConsistentRead
+  consistent?: boolean
   returnOnlyCount?: boolean
 
   /**
@@ -38,7 +40,7 @@ export type SearchGroupFunction<T extends Table> = (condition: MagicSearch<T>) =
 export class MagicSearch<T extends Table> {
   private filters: ComplexFilters<T> = []
 
-  constructor(private readonly tableClass: ITable<T>, filters?: Filters<T>, private input: MagicSearchInput<T> = {}) {
+  constructor(private readonly tableClass: ITable<T>, filters?: Filters<T>, private readonly input: MagicSearchInput<T> = {}) {
     if (filters != null) {
       this.addFilterGroup([filters])
     }
@@ -61,45 +63,45 @@ export class MagicSearch<T extends Table> {
   }
 
   filter<
-    K1 extends AttributeNames<T>
-  >(a1: K1): Condition<T, Attr, NonNullable<T[K1]>>;
+    K1 extends AttributeNames<T>,
+  >(a1: K1): Condition<T, Attr, NonNullable<T[K1]>>
   filter<
     K1 extends NonNullable<AttributeNames<T>>,
-    K2 extends keyof NonNullable<T[K1]>
-  >(a1: K1, a2: K2): Condition<T, Attr, NonNullable<NonNullable<T[K1]>[K2]>>;
-  filter<
-    K1 extends AttributeNames<T>,
     K2 extends keyof NonNullable<T[K1]>,
-    K3 extends keyof NonNullable<NonNullable<T[K1]>[K2]>
-  >(a1: K1, a2: K2, a3: K3): Condition<T, Attr, NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>>;
+  >(a1: K1, a2: K2): Condition<T, Attr, NonNullable<NonNullable<T[K1]>[K2]>>
   filter<
     K1 extends AttributeNames<T>,
     K2 extends keyof NonNullable<T[K1]>,
     K3 extends keyof NonNullable<NonNullable<T[K1]>[K2]>,
-    K4 extends keyof NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>
-  >(a1: K1, a2: K2, a3: K3, a4: K4): Condition<T, Attr, NonNullable<NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>[K4]>>;
+  >(a1: K1, a2: K2, a3: K3): Condition<T, Attr, NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>>
+  filter<
+    K1 extends AttributeNames<T>,
+    K2 extends keyof NonNullable<T[K1]>,
+    K3 extends keyof NonNullable<NonNullable<T[K1]>[K2]>,
+    K4 extends keyof NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>,
+  >(a1: K1, a2: K2, a3: K3, a4: K4): Condition<T, Attr, NonNullable<NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>[K4]>>
   filter<Attr extends AttributeNames<T>>(...attributePropertyPath: any): Condition<T, Attr, T[Attr]> {
     return new Condition<T, Attr, T[Attr]>(this, attributePropertyPath.join('.'))
   }
 
   where<
-    K1 extends AttributeNames<T>
-  >(a1: K1): Condition<T, Attr, NonNullable<T[K1]>>;
+    K1 extends AttributeNames<T>,
+  >(a1: K1): Condition<T, Attr, NonNullable<T[K1]>>
   where<
     K1 extends NonNullable<AttributeNames<T>>,
-    K2 extends keyof NonNullable<T[K1]>
-  >(a1: K1, a2: K2): Condition<T, Attr, NonNullable<NonNullable<T[K1]>[K2]>>;
-  where<
-    K1 extends AttributeNames<T>,
     K2 extends keyof NonNullable<T[K1]>,
-    K3 extends keyof NonNullable<NonNullable<T[K1]>[K2]>
-  >(a1: K1, a2: K2, a3: K3): Condition<T, Attr, NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>>;
+  >(a1: K1, a2: K2): Condition<T, Attr, NonNullable<NonNullable<T[K1]>[K2]>>
   where<
     K1 extends AttributeNames<T>,
     K2 extends keyof NonNullable<T[K1]>,
     K3 extends keyof NonNullable<NonNullable<T[K1]>[K2]>,
-    K4 extends keyof NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>
-  >(a1: K1, a2: K2, a3: K3, a4: K4): Condition<T, Attr, NonNullable<NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>[K4]>>;
+  >(a1: K1, a2: K2, a3: K3): Condition<T, Attr, NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>>
+  where<
+    K1 extends AttributeNames<T>,
+    K2 extends keyof NonNullable<T[K1]>,
+    K3 extends keyof NonNullable<NonNullable<T[K1]>[K2]>,
+    K4 extends keyof NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>,
+  >(a1: K1, a2: K2, a3: K3, a4: K4): Condition<T, Attr, NonNullable<NonNullable<NonNullable<NonNullable<T[K1]>[K2]>[K3]>[K4]>>
   where<Attr extends AttributeNames<T>>(...attributePropertyPath: any): Condition<T, Attr, T[Attr]> {
     return new Condition<T, Attr, T[Attr]>(this, attributePropertyPath.join('.'))
   }
@@ -131,7 +133,7 @@ export class MagicSearch<T extends Table> {
    *
    * You can pass that object into this method to get additional results from your table.
    */
-  startAt(exclusiveStartKey?: DynamoDB.Key): this {
+  startAt(exclusiveStartKey?: Key): this {
     this.input.exclusiveStartKey = exclusiveStartKey
     return this
   }
@@ -183,7 +185,7 @@ export class MagicSearch<T extends Table> {
   /**
    * This will cause the query to run in a consistent manner as opposed to the default eventually consistent manner.
    */
-  consistent(consistent: DynamoDB.ConsistentRead = true): this {
+  consistent(consistent = true): this {
     this.input.consistent = consistent
     return this
   }
@@ -230,9 +232,9 @@ export class MagicSearch<T extends Table> {
    *
    * A promise will be returned that will resolve to the results array upon completion.
    */
-  async exec(): Promise<QueryOutput<T>> {
+  async exec(requestOptions?: IRequestOptions): Promise<QueryOutput<T>> {
     const input = this.getInput()
-    return await this.page(input)
+    return await this.page(input, requestOptions)
   }
 
   /**
@@ -248,18 +250,11 @@ export class MagicSearch<T extends Table> {
    * It is recommended you apply a `.limit(minOrMore)` before calling `.minimum` to ensure
    * you do not load too many results as well.
   */
-  async minimum(minimum: number): Promise<QueryOutput<T>> {
-    const input = this.getInput()
+  async minimum(minimum: number, requestOptions?: IRequestOptions): Promise<QueryOutput<T>> {
     const outputs: Array<QueryOutput<T>> = []
-    let page: QueryOutput<T> | undefined
     let count = 0
 
-    while (page == null || page.lastEvaluatedKey != null) {
-      if (page?.lastEvaluatedKey != null) {
-        input.ExclusiveStartKey = page.lastEvaluatedKey
-      }
-
-      page = await this.page(input)
+    for await (const page of this.iteratePages(requestOptions)) {
       count += page.count
       outputs.push(page)
 
@@ -278,10 +273,35 @@ export class MagicSearch<T extends Table> {
    * Be cautious. This can easily cause timeouts if you're using Lambda functions.
    * This is also non-ideal for scans, for better performance use a segmented scan
    * via the Query.PrimaryKey.segmentedScan or Query.GlobalSecondaryIndex.segmentedScan.
+   *
+   * For a more optimized process, consider using:
+   * - iteratePages
+   * - iterateDocuments
    */
-  async all(): Promise<QueryOutput<T>> {
-    const input = this.getInput()
+  async all(requestOptions?: IRequestOptions): Promise<QueryOutput<T>> {
     const outputs: Array<QueryOutput<T>> = []
+
+    for await (const page of this.iteratePages(requestOptions)) {
+      outputs.push(page)
+    }
+
+    return QueryOutput.fromSeveralOutputs(this.tableClass, outputs)
+  }
+
+  /**
+   * Async generator to iterate through every page of results.
+   *
+   * Usage example:
+   * ```typescript
+   * for await (const page of search.iteratePages()) {
+   *   for (const document of page) {
+   *     // Do something
+   *   }
+   * }
+   * ```
+   */
+  async * iteratePages(requestOptions?: IRequestOptions): AsyncGenerator<QueryOutput<T>> {
+    const input = this.getInput()
     let page: QueryOutput<T> | undefined
 
     // if this is the first page, or if we have not hit the last page, continue loading records…
@@ -290,14 +310,30 @@ export class MagicSearch<T extends Table> {
         input.ExclusiveStartKey = page.lastEvaluatedKey
       }
 
-      page = await this.page(input)
-      outputs.push(page)
+      page = await this.page(input, requestOptions)
+      yield page
     }
-
-    return QueryOutput.fromSeveralOutputs(this.tableClass, outputs)
   }
 
-  getInput(): DynamoDB.ScanInput | DynamoDB.QueryInput {
+  /**
+   * Async generator to iterate through every document that matches your query.
+   *
+   * Usage example:
+   * ```typescript
+   * for await (const document of search.iterateDocuments()) {
+   *   // Do something
+   * }
+   * ```
+   */
+  async * iterateDocuments(requestOptions?: IRequestOptions): AsyncGenerator<T> {
+    for await (const page of this.iteratePages(requestOptions)) {
+      for (const item of page) {
+        yield item
+      }
+    }
+  }
+
+  getInput(): ScanCommandInput | QueryCommandInput {
     let indexMetadata: Metadata.Index.GlobalSecondaryIndex | Metadata.Index.PrimaryKey | undefined
 
     if (this.input.index != null && typeof this.input.index === 'string') {
@@ -340,7 +376,7 @@ export class MagicSearch<T extends Table> {
 
     const query = buildQueryExpression(this.tableClass.schema, this.filters, indexMetadata)
 
-    const input: DynamoDB.ScanInput | DynamoDB.QueryInput = {
+    const input: ScanCommandInput | QueryCommandInput = {
       TableName: this.tableClass.schema.name,
       ConsistentRead: false,
       ExpressionAttributeValues: query.ExpressionAttributeValues,
@@ -361,7 +397,7 @@ export class MagicSearch<T extends Table> {
     }
 
     if (this.input.rangeOrder === 'DESC') {
-      (input as DynamoDB.QueryInput).ScanIndexForward = false
+      (input as QueryCommandInput).ScanIndexForward = false
     }
 
     if (this.input.limit != null) {
@@ -390,39 +426,37 @@ export class MagicSearch<T extends Table> {
     }
 
     if (query.KeyConditionExpression != null) {
-      (input as DynamoDB.QueryInput).KeyConditionExpression = query.KeyConditionExpression
+      (input as QueryCommandInput).KeyConditionExpression = query.KeyConditionExpression
     }
 
     return input
   }
 
   /**
-   * @deprecated Use MagicSearch.prototype.exec()
+   * Get a page of documents. Primarily used internally, but to allow advanced
+   * uses, you are able to use `getInput()`, manipulate the scan/query input,
+   * then pass it into this method to run the query and get back your results.
    */
-  async search(): Promise<QueryOutput<T>> {
-    return await this.exec()
-  }
-
-  async page(input: DynamoDB.ScanInput | DynamoDB.QueryInput): Promise<QueryOutput<T>> {
+  async page(input: ScanCommandInput | QueryCommandInput, requestOptions?: IRequestOptions): Promise<QueryOutput<T>> {
     const hasProjection = input.ProjectionExpression == null
-    let output: DynamoDB.ScanOutput | DynamoDB.QueryOutput
+    let output: ScanCommandOutput | QueryCommandOutput
 
     // if we are filtering based on key conditions, run a query instead of a scan
-    if ((input as DynamoDB.QueryInput).KeyConditionExpression != null) {
+    if ((input as QueryCommandInput).KeyConditionExpression != null) {
       try {
-        output = await this.tableClass.schema.dynamo.query(input).promise()
+        output = await this.tableClass.schema.dynamo.query(input, requestOptions)
       } catch (ex) {
         throw new HelpfulError(ex, this.tableClass, input)
       }
     } else {
-      if ((input as DynamoDB.QueryInput).ScanIndexForward === false) {
+      if ((input as QueryCommandInput).ScanIndexForward === false) {
         throw new Error('Cannot specify a sort direction, range order, or use ScanIndexForward on a scan operation. Try specifying the index being used.')
       } else {
-        delete (input as DynamoDB.QueryInput).ScanIndexForward
+        delete (input as QueryCommandInput).ScanIndexForward
       }
 
       try {
-        output = await this.tableClass.schema.dynamo.scan(input).promise()
+        output = await this.tableClass.schema.dynamo.scan(input, requestOptions)
       } catch (ex) {
         throw new HelpfulError(ex, this.tableClass, input)
       }

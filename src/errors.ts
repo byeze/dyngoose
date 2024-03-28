@@ -1,6 +1,5 @@
-import { AWSError } from 'aws-sdk'
-import { BatchWriteItemOutput } from 'aws-sdk/clients/dynamodb'
-import { ITable } from './table'
+import { type BatchWriteItemOutput, type DynamoDBServiceException } from '@aws-sdk/client-dynamodb'
+import { type ITable } from './table'
 
 export class DyngooseError extends Error {
   constructor(message: string) {
@@ -14,7 +13,7 @@ export class DyngooseError extends Error {
 export class HelpfulError extends DyngooseError {
   tableName?: string
 
-  constructor(error: AWSError, public tableClass?: ITable<any>, public queryInput?: any) {
+  constructor(error: DynamoDBServiceException, public tableClass?: ITable<any>, public queryInput?: any) {
     super(error.message)
     Object.assign(this, error)
     Error.captureStackTrace(this, this.constructor)

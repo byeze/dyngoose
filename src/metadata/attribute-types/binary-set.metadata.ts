@@ -1,7 +1,10 @@
-import { DynamoDB } from 'aws-sdk'
-import { AttributeMetadata } from '../attribute'
+import { type AttributeMetadata } from '../attribute'
 
-type Type = DynamoDB.BinarySetAttributeValue
+export type BinarySetValue = Set<Uint8Array> | Uint8Array[]
 
-export interface BinarySetAttributeMetadata extends AttributeMetadata<Type> {
+export interface BinarySetAttributeMetadata extends AttributeMetadata<BinarySetValue> {
+  /**
+   * Return a native JavaScript array, rather than a Set.
+   */
+  array?: boolean
 }

@@ -3,25 +3,31 @@ on: [push]
 jobs:
   job:
     runs-on: ubuntu-latest
-    container: node:14
     timeout-minutes: 15
     services:
       dynamodb:
         image: amazon/dynamodb-local:1.16.0
+        ports:
+          - 8000:8000
         # @note Github overwrites WORKDIR to repository path, so overwrite that again
         options: >-
           --workdir /home/dynamodblocal
           --health-cmd "curl --fail http://127.0.0.1:8000/shell/ || exit 1" --health-interval 10s --health-timeout 5s --health-retries 5
     steps:
-      - uses: actions/checkout@v1
-      - name: Prepare
+      - uses: actions/checkout@v3
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18.x' # @node-upgrade
+          cache: npm
+      - name: Install node dependencies
         run: npm ci
       - name: Lint
         run: npm run lint
       - name: Test
         run: npm test
         env:
-          DYNAMO_ENDPOINT: http://dynamodb:8000
+          DYNAMO_ENDPOINT: http://localhost:8000
       - name: Publish
         if: github.event_name == 'push' && github.ref == 'refs/heads/master'
         # npm will not execute `prepublisnOnly` lifecycle hook if user is root.

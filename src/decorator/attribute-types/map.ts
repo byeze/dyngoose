@@ -1,22 +1,28 @@
-import { DynamoDB } from 'aws-sdk'
-import * as _ from 'lodash'
-import { Attribute } from '../../attribute'
+import { type AttributeValue } from '@aws-sdk/client-dynamodb'
+import { each, find, get, isFunction, isObject } from 'lodash'
+import { type Attribute } from '../../attribute'
 import { DynamoAttributeType } from '../../dynamo-attribute-types'
 import { ValidationError } from '../../errors'
-import { IAttributeType } from '../../interfaces'
-import { MapAttributeMetadata } from '../../metadata/attribute-types/map.metadata'
-import { Table } from '../../table'
+import { type AttributeMap, type IAttributeType } from '../../interfaces'
+import { type MapAttributeMetadata, type MapBaseValue } from '../../metadata/attribute-types/map.metadata'
+import { type Table } from '../../table'
 import { AttributeType } from '../../tables/attribute-type'
 import { isTrulyEmpty } from '../../utils/truly-empty'
+import { marshall, unmarshall } from '@aws-sdk/util-dynamodb'
 
-export class MapAttributeType<Value> extends AttributeType<Value, MapAttributeMetadata<Value>>
+export class MapAttributeType<Value extends MapBaseValue> extends AttributeType<Value, MapAttributeMetadata<Value>>
   implements IAttributeType<Value> {
   type = DynamoAttributeType.Map
-  attributes: { [key: string]: Attribute<any> }
+  attributes: Record<string, Attribute<any>>
 
   constructor(record: Table, propertyName: string, protected metadata: MapAttributeMetadata<Value>) {
     super(record, propertyName, metadata)
     this.attributes = {}
+
+    // backwards compatibility to accept 'ignoreUnknownProperties'
+    if (this.metadata.arbitraryAttributes == null && this.metadata.ignoreUnknownProperties === true) {
+      this.metadata.arbitraryAttributes = 'ignore'
+    }
 
     // convert attributes from ChildAttributeMetadata types to
     for (const childAttributePropertyName of Object.keys(this.metadata.attributes)) {
@@ -36,23 +42,28 @@ export class MapAttributeType<Value> extends AttributeType<Value, MapAttributeMe
     return map as Value
   }
 
-  toDynamo(mapValue: Value): DynamoDB.AttributeValue {
-    if (!_.isObject(mapValue)) {
+  toDynamo(mapValue: Value): AttributeValue {
+    if (!isObject(mapValue)) {
       throw new ValidationError(`Map attributes require values to be an Object, but was given a ${typeof mapValue}`)
     }
 
-    const map: DynamoDB.MapAttributeValue = {}
+    const map: AttributeMap = {}
+    const marshallOptions = this.metadata.marshallOptions ?? { convertEmptyValues: true, removeUndefinedValues: true }
 
     for (const propertyName of Object.keys(mapValue)) {
-      const attribute = _.find(this.attributes, (attr) => attr.propertyName === propertyName)
-      const value = _.get(mapValue, propertyName)
+      const attribute = find(this.attributes, (attr) => attr.propertyName === propertyName)
+      const value = get(mapValue, propertyName)
 
       if (attribute != null) {
         const attributeValue = attribute.toDynamo(value)
         if (attributeValue != null) {
-          map[attribute.propertyName] = attributeValue
+          map[attribute.name] = attributeValue
         }
-      } else if (this.metadata.ignoreUnknownProperties !== true) {
+      } else if (this.metadata.arbitraryAttributes === 'marshall') {
+        if (value != null) {
+          map[propertyName] = marshall({ value }, marshallOptions).value
+        }
+      } else if (this.metadata.arbitraryAttributes !== 'ignore') {
         throw new ValidationError(`Unknown property set on Map, ${propertyName}`)
       }
     }
@@ -60,9 +71,9 @@ export class MapAttributeType<Value> extends AttributeType<Value, MapAttributeMe
     return { M: map }
   }
 
-  fromDynamo(attributeValue: DynamoDB.AttributeValue): Value {
-    const mapValue: DynamoDB.MapAttributeValue = attributeValue.M == null ? {} : attributeValue.M
-    const map: any = mapValue
+  fromDynamo(attributeValue: AttributeValue): Value {
+    const mapValue: AttributeMap = attributeValue.M == null ? {} : attributeValue.M
+    const map: any = {}
 
     for (const attributeName of Object.keys(mapValue)) {
       const value = mapValue[attributeName]
@@ -70,7 +81,9 @@ export class MapAttributeType<Value> extends AttributeType<Value, MapAttributeMe
 
       if (attribute != null) {
         map[attribute.propertyName] = attribute.fromDynamo(value)
-      } else if (this.metadata.ignoreUnknownProperties !== true) {
+      } else if (this.metadata.arbitraryAttributes === 'marshall') {
+        map[attributeName] = unmarshall({ value }, this.metadata.unmarshallOptions).value
+      } else if (this.metadata.arbitraryAttributes !== 'ignore') {
         throw new ValidationError(`Unknown attribute seen on Map, ${attributeName}`)
       }
     }
@@ -81,8 +94,8 @@ export class MapAttributeType<Value> extends AttributeType<Value, MapAttributeMe
   fromJSON(json: any): Value {
     const mapValue: any = {}
 
-    _.each(json, (value: any, propertyName: string) => {
-      const attribute = _.find(this.attributes, (attr) => attr.propertyName === propertyName)
+    each(json, (value: any, propertyName: string) => {
+      const attribute = find(this.attributes, (attr) => attr.propertyName === propertyName)
 
       if (attribute != null) {
         if (typeof attribute.type.fromJSON === 'function') {
@@ -101,19 +114,21 @@ export class MapAttributeType<Value> extends AttributeType<Value, MapAttributeMe
     const json: any = {}
 
     for (const propertyName of Object.keys(mapValue)) {
-      const attribute = _.find(this.attributes, (attr) => attr.propertyName === propertyName)
-      const value = _.get(mapValue, propertyName)
+      const attribute = find(this.attributes, (attr) => attr.propertyName === propertyName)
+      const value = get(mapValue, propertyName)
 
       if (attribute != null) {
         if (!isTrulyEmpty(value)) {
-          if (_.isFunction(attribute.type.toJSON)) {
+          if (isFunction(attribute.type.toJSON)) {
             json[propertyName] = attribute.type.toJSON(value, attribute)
           } else {
             json[propertyName] = value
           }
         }
-      } else if (this.metadata.ignoreUnknownProperties !== true) {
-        throw new ValidationError(`Unknown property set on Map, ${propertyName}`)
+      } else if (this.metadata.arbitraryAttributes === 'marshall') {
+        json[propertyName] = value
+      } else if (this.metadata.arbitraryAttributes !== 'ignore') {
+        throw new ValidationError(`Unknown property set on Map during toJSON, ${propertyName}`)
       }
     }
 

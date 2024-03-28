@@ -1,15 +1,17 @@
-import { DynamoDB } from 'aws-sdk'
+import { type QueryCommandInput, type QueryCommandOutput, type ScanCommandInput, type ScanCommandOutput } from '@aws-sdk/client-dynamodb'
 import { get, has, isArray } from 'lodash'
 import { HelpfulError, QueryError } from '../errors'
-import * as Metadata from '../metadata'
-import { ITable, Table } from '../table'
+import { type Key } from '../interfaces/key.interface'
+import type * as Metadata from '../metadata'
+import { type ITable, type Table } from '../table'
 import { buildQueryExpression } from './expression'
-import { Filters as QueryFilters } from './filters'
+import { type Filters as QueryFilters } from './filters'
 import { QueryOutput } from './output'
 import { buildProjectionExpression } from './projection-expression'
-import { MagicSearch, MagicSearchInput } from './search'
+import { MagicSearch, type MagicSearchInput } from './search'
+import { toHttpHandlerOptions, type IRequestOptions } from '../connections'
 
-interface GlobalSecondaryIndexGetInput {
+interface GlobalSecondaryIndexGetInput extends IRequestOptions {
   /**
    * Allow Dyngoose to build the projection expression for your query.
    *
@@ -24,14 +26,14 @@ interface GlobalSecondaryIndexGetInput {
    *
    * @see https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Expressions.ProjectionExpressions.html
    */
-  projectionExpression?: DynamoDB.ProjectionExpression
+  projectionExpression?: string
 
   /**
    * Optionally used when you manually specify the ProjectionExpression for your query.
    *
    * This is written for you when specifying `attributes`.
    */
-  expressionAttributeNames?: DynamoDB.ExpressionAttributeNameMap
+  expressionAttributeNames?: Record<string, string>
 }
 
 interface GlobalSecondaryIndexQueryScanSharedInput extends GlobalSecondaryIndexGetInput {
@@ -57,7 +59,7 @@ interface GlobalSecondaryIndexQueryScanSharedInput extends GlobalSecondaryIndexG
    */
   limit?: number
 
-  exclusiveStartKey?: DynamoDB.Key
+  exclusiveStartKey?: Key
 }
 
 interface GlobalSecondaryIndexQueryInput extends GlobalSecondaryIndexQueryScanSharedInput {
@@ -70,14 +72,14 @@ interface GlobalSecondaryIndexQueryInput extends GlobalSecondaryIndexQueryScanSh
 }
 
 interface GlobalSecondaryIndexScanInput extends GlobalSecondaryIndexQueryScanSharedInput {
-  totalSegments?: DynamoDB.ScanTotalSegments
-  segment?: DynamoDB.ScanSegment
-  consistent?: DynamoDB.ConsistentRead
+  totalSegments?: number
+  segment?: number
+  consistent?: boolean
 }
 
 interface GlobalSecondaryIndexSegmentedScanInput extends GlobalSecondaryIndexScanInput {
   limit: number
-  totalSegments: DynamoDB.ScanTotalSegments
+  totalSegments: number
 }
 
 export class GlobalSecondaryIndex<T extends Table> {
@@ -123,13 +125,13 @@ export class GlobalSecondaryIndex<T extends Table> {
     }
   }
 
-  public getQueryInput(input: GlobalSecondaryIndexQueryInput = {}, filters?: QueryFilters<T>): DynamoDB.QueryInput {
+  public getQueryInput(input: GlobalSecondaryIndexQueryInput = {}, filters?: QueryFilters<T>): QueryCommandInput {
     if (input.rangeOrder == null) {
       input.rangeOrder = 'ASC'
     }
 
     const ScanIndexForward = input.rangeOrder === 'ASC'
-    const queryInput: DynamoDB.QueryInput = {
+    const queryInput: QueryCommandInput = {
       TableName: this.tableClass.schema.name,
       Limit: input.limit,
       IndexName: this.metadata.name,
@@ -185,10 +187,10 @@ export class GlobalSecondaryIndex<T extends Table> {
 
     const queryInput = this.getQueryInput(input, filters)
     const hasProjection = queryInput.ProjectionExpression == null
-    let output: DynamoDB.QueryOutput
+    let output: QueryCommandOutput
 
     try {
-      output = await this.tableClass.schema.dynamo.query(queryInput).promise()
+      output = await this.tableClass.schema.dynamo.query(queryInput, toHttpHandlerOptions(input))
     } catch (ex) {
       throw new HelpfulError(ex, this.tableClass, queryInput)
     }
@@ -196,8 +198,8 @@ export class GlobalSecondaryIndex<T extends Table> {
     return QueryOutput.fromDynamoOutput<T>(this.tableClass, output, hasProjection)
   }
 
-  public getScanInput(input: GlobalSecondaryIndexScanInput = {}, filters?: QueryFilters<T>): DynamoDB.ScanInput {
-    const scanInput: DynamoDB.ScanInput = {
+  public getScanInput(input: GlobalSecondaryIndexScanInput = {}, filters?: QueryFilters<T>): ScanCommandInput {
+    const scanInput: ScanCommandInput = {
       TableName: this.tableClass.schema.name,
       IndexName: this.metadata.name,
       Limit: input.limit,
@@ -240,12 +242,12 @@ export class GlobalSecondaryIndex<T extends Table> {
    * *WARNING*: In most circumstances this is not a good thing to do.
    * This will return all the items in this index, does not perform well!
    */
-  public async scan(filters?: QueryFilters<T> | undefined | null, input: GlobalSecondaryIndexScanInput = {}): Promise<QueryOutput<T>> {
+  public async scan(filters?: QueryFilters<T> | undefined | null, input: GlobalSecondaryIndexScanInput = {}, requestOptions?: IRequestOptions): Promise<QueryOutput<T>> {
     const scanInput = this.getScanInput(input, filters == null ? undefined : filters)
     const hasProjection = scanInput.ProjectionExpression == null
-    let output: DynamoDB.ScanOutput
+    let output: ScanCommandOutput
     try {
-      output = await this.tableClass.schema.dynamo.scan(scanInput).promise()
+      output = await this.tableClass.schema.dynamo.scan(scanInput, requestOptions)
     } catch (ex) {
       throw new HelpfulError(ex, this.tableClass, scanInput)
     }
@@ -263,11 +265,11 @@ export class GlobalSecondaryIndex<T extends Table> {
    *
    * @see {@link https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/Scan.html#Scan.ParallelScan}
    */
-  public async segmentedScan(filters: QueryFilters<T> | undefined | null, input: GlobalSecondaryIndexSegmentedScanInput): Promise<QueryOutput<T>> {
+  public async segmentedScan(filters: QueryFilters<T> | undefined | null, input: GlobalSecondaryIndexSegmentedScanInput, requestOptions?: IRequestOptions): Promise<QueryOutput<T>> {
     const scans: Array<Promise<QueryOutput<T>>> = []
     for (let i = 0; i < input.totalSegments; i++) {
       input.segment = i
-      scans.push(this.scan(filters, input))
+      scans.push(this.scan(filters, input, requestOptions))
     }
 
     const scanOutputs = await Promise.all(scans)

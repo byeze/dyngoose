@@ -1,4 +1,4 @@
-import { expect } from 'chai'
+import { expect, should } from 'chai'
 import { sortBy } from 'lodash'
 import { BatchGet } from './batch-get'
 import { PrimaryKey } from './query/primary-key'
@@ -11,7 +11,7 @@ import {
 } from './decorator'
 
 describe('BatchGet', () => {
-  @TableDecorator({ name: 'BatchGetTestCardTable1' })
+  @TableDecorator({ name: 'BatchGetTestCardTable1', backup: false })
   class TestTable1 extends Table {
     @PrimaryKeyDecorator('id')
     public static readonly primaryKey: PrimaryKey<TestTable1, number, void>
@@ -23,7 +23,7 @@ describe('BatchGet', () => {
     public status: string
   }
 
-  @TableDecorator({ name: 'BatchGetTestCardTable2' })
+  @TableDecorator({ name: 'BatchGetTestCardTable2', backup: false })
   class TestTable2 extends Table {
     @PrimaryKeyDecorator('id')
     public static readonly primaryKey: PrimaryKey<TestTable2, number, void>
@@ -141,6 +141,25 @@ describe('BatchGet', () => {
     // now verify the results
     expect(results.length).eq(1)
     expect(results[0].id).eq(1)
+  })
+
+  it('should not return records when aborted', async () => {
+    const abortController = new AbortController()
+    const batch = new BatchGet<TestTable1>()
+    batch.get(TestTable1.primaryKey.fromKey(1))
+    batch.get(TestTable1.primaryKey.fromKey(42))
+    abortController.abort()
+
+    let exception
+    try {
+      await batch.retrieve({
+        abortSignal: abortController.signal,
+      })
+    } catch (ex) {
+      exception = ex
+    }
+
+    should().exist(exception)
   })
 
   it('should accept projection expressions', async () => {

@@ -1,13 +1,14 @@
-import { expect } from 'chai'
+import { expect, should } from 'chai'
 import { TestableTable } from '../setup-tests.spec'
 import { MagicSearch } from './search'
 
 describe('Query/Search', () => {
   before(async () => {
+    const sets = { testStringSet: new Set(['search']), testStringSetArray: ['search'] }
     await TestableTable.documentClient.batchPut([
-      TestableTable.new({ id: 500, title: 'Table.search 0', lowercaseString: 'table search 0' }),
-      TestableTable.new({ id: 501, title: 'Table.search 1', lowercaseString: 'table search 1' }),
-      TestableTable.new({ id: 502, title: 'Table.search 2', lowercaseString: 'table search 2' }),
+      TestableTable.new({ id: 500, title: 'Table.search 0', lowercaseString: 'table search 0', ...sets }),
+      TestableTable.new({ id: 501, title: 'Table.search 1', lowercaseString: 'table search 1', ...sets }),
+      TestableTable.new({ id: 502, title: 'Table.search 2', lowercaseString: 'table search 2', ...sets }),
       TestableTable.new({ id: 503, title: 'Table.search 3', lowercaseString: 'table search 3' }),
       TestableTable.new({ id: 504, title: 'Table.search 4', lowercaseString: 'reject the search 4' }),
       TestableTable.new({ id: 504, title: 'Table.search 5', lowercaseString: 'magic' }),
@@ -24,6 +25,24 @@ describe('Query/Search', () => {
     expect(result.count).to.eq(1)
     expect(result.records[0].title).to.eq('Table.search 0')
     expect(result.records[0].lowercaseString).to.eq('table search 0')
+  })
+
+  it('should not search when aborted', async () => {
+    const abortController = new AbortController()
+
+    const search = new MagicSearch<TestableTable>(TestableTable, { title: 'Table.search 0' })
+    const input = search.getInput()
+    expect(input.IndexName).to.eq('titleIndex')
+    abortController.abort()
+
+    let exception
+    try {
+      await search.exec({ abortSignal: abortController.signal })
+    } catch (ex) {
+      exception = ex
+    }
+
+    should().exist(exception)
   })
 
   it('should ignore index if you are using a special condition', async () => {
@@ -89,6 +108,29 @@ describe('Query/Search', () => {
     expect(input.FilterExpression).to.eq('contains(#a0, :v0) AND (#a1 = :v1 OR #a1 = :v2)')
     const result = await search.exec()
     expect(result.count).to.eq(3)
+  })
+
+  it('should support filtering on sets', async () => {
+    const search = new MagicSearch<TestableTable>(TestableTable)
+      .filter('testStringSet').contains('search')
+      .and()
+      .filter('testStringSetArray').contains('search')
+    const input = search.getInput()
+    expect(input.IndexName).to.be.a('undefined')
+    expect(input.FilterExpression).to.eq('contains(#a0, :v0) AND contains(#a1, :v0)')
+    const result = await search.exec()
+    expect(result.count).to.eq(3)
+  })
+
+  it('should support filtering on children of maps', async () => {
+    const search = new MagicSearch<TestableTable>(TestableTable)
+      .filter('testMap', 'property1').eq('test')
+    const input = search.getInput()
+    expect(input.FilterExpression).to.eq('#a00.#a01 = :v0')
+    expect(input.ExpressionAttributeNames).to.deep.eq({
+      '#a00': 'someMap',
+      '#a01': 'someProperty1',
+    })
   })
 
   it('ConsistentRead defaults to false', async () => {
@@ -224,6 +266,24 @@ describe('Query/Search', () => {
       const output = await search.all()
       expect(output.length).to.eq(8)
     })
+
+    it('should not return results when aborted', async () => {
+      const abortController = new AbortController()
+      const search = new MagicSearch<TestableTable>(TestableTable)
+        .filter('title').contains('Table.search')
+        .limit(2)
+
+      abortController.abort()
+
+      let exception
+      try {
+        await search.all({ abortSignal: abortController.signal })
+      } catch (ex) {
+        exception = ex
+      }
+
+      should().exist(exception)
+    })
   })
 
   describe('#minimum', () => {
@@ -235,6 +295,107 @@ describe('Query/Search', () => {
       // we set a limit and then called .all(), so it should page automatically until all results are found
       const output = await search.minimum(5)
       expect(output.length).to.be.at.least(5)
+    })
+
+    it('should not return results when aborted', async () => {
+      const abortController = new AbortController()
+
+      const search = new MagicSearch<TestableTable>(TestableTable)
+        .filter('title').contains('Table.search')
+        .limit(2)
+
+      abortController.abort()
+
+      let exception
+      try {
+        await search.minimum(5, { abortSignal: abortController.signal })
+      } catch (ex) {
+        exception = ex
+      }
+
+      should().exist(exception)
+    })
+  })
+
+  describe('#iteratePages', () => {
+    it('should execute the search query', async () => {
+      const search = new MagicSearch<TestableTable>(TestableTable)
+        .filter('title').contains('Table.search')
+        .limit(2)
+
+      let countPages = 0
+      let countItems = 0
+
+      for await (const page of search.iteratePages()) {
+        countPages++
+        countItems += page.length
+      }
+
+      expect(countPages).to.be.greaterThanOrEqual(4)
+      expect(countItems).to.be.greaterThanOrEqual(8)
+    })
+
+    it('should not return results when aborted', async () => {
+      const abortController = new AbortController()
+      const search = new MagicSearch<TestableTable>(TestableTable)
+        .filter('title').contains('Table.search')
+        .limit(2)
+
+      abortController.abort()
+
+      let exception
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const item of search.iteratePages({ abortSignal: abortController.signal })) {
+          //
+        }
+        await search.all({ abortSignal: abortController.signal })
+      } catch (ex) {
+        exception = ex
+      }
+
+      should().exist(exception)
+    })
+  })
+
+  describe('#iterateDocuments', () => {
+    it('should execute the search query', async () => {
+      const search = new MagicSearch<TestableTable>(TestableTable)
+        .filter('title').contains('Table.search')
+        .limit(2)
+
+      let count = 0
+      let lastItem: TestableTable | undefined
+
+      for await (const item of search.iterateDocuments()) {
+        count++
+        lastItem = item
+      }
+
+      expect(count).to.eq(8)
+      should().exist(lastItem)
+    })
+
+    it('should not return results when aborted', async () => {
+      const abortController = new AbortController()
+      const search = new MagicSearch<TestableTable>(TestableTable)
+        .filter('title').contains('Table.search')
+        .limit(2)
+
+      abortController.abort()
+
+      let exception
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-unused-vars
+        for await (const item of search.iterateDocuments({ abortSignal: abortController.signal })) {
+          //
+        }
+        await search.all({ abortSignal: abortController.signal })
+      } catch (ex) {
+        exception = ex
+      }
+
+      should().exist(exception)
     })
   })
 })

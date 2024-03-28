@@ -260,13 +260,54 @@ Additionally, `query.ascending()` and `query.descending()` can be used as shorth
 
 This function sets the `ScanIndexForward` property on the query request passed to DynamoDB. This ensures sorting is done on the database side to optimize results.
 
+### `query.iteratePages()`
+
+Uses an `AsyncGenerator` to page and yield a single page of results from DynamoDB. Will paginate the results for you as necessary. This is preferred over using `query.all()` which will try to retain all the records in memory.
+
+Similar to `query.exec()` this will execute your query and return your results.
+
+Yields a single instance of [Dyngoose.QueryOutput](Output.md) at a time.
+
+Usage Example:
+
+```typescript
+const search = Cat.search()
+  .filter(…)…
+
+for await (const page of search.iteratePages()) {
+  // do something with the page, maybe you'd end up looping through the results
+  for (const document of page) {
+    // if you're only doing this, you can also use iterateDocuments()
+  }
+}
+```
+
+### `query.iterateDocuments()`
+
+Similar to `query.iteratePages()`, this uses an `AsyncGenerator` and will page through results until you've processed all possible results, but it yields a single instance of your `Table` at a time. Will paginate the results for you as necessary. This is preferred over using `all()` which will try to retain all the records in memory.
+
+Similar to `query.exec()` this will execute your query and return your results.
+
+Yields a single instance of your `Table` subclass at a time.
+
+Usage Example:
+
+```typescript
+const search = Cat.search()
+  .filter(…)…
+
+for await (const document of search.iterateDocuments()) {
+  // do something with the document
+}
+```
+
 ### `query.all()`
 
 Normally if a query result is more than the AWS query response limit, DynamoDB will provide the `LastEvaluatedKey` and paginates the results so you would have to send multiple requests. This function sends continuous query requests upon receiving a response with a `LastEvaluatedKey` until all documents have been received. This can be useful if you wish to get all the documents matching your query, although the performance can vary greatly.
 
 Similar to `query.exec()` this will execute your query and return your results.
 
-The documents for all of the requests will be aggregated into a single `Dyngoose.QueryOutput` response.
+The documents for all of the requests will be aggregated into a single [Dyngoose.QueryOutput](Output.md) response.
 
 **This should be avoided under normal circumstances, paging is recommended.**
 
@@ -280,7 +321,7 @@ Similar to `query.all`, `query.minimum` will page internally for you, however, u
 
 Similar to `query.exec()` and `query.all()` this will execute your query and return your results.
 
-The documents for all of the requests will be aggregated into a single `Dyngoose.QueryOutput` response. If there are more objects, the request will contain a `LastEvaluatedKey` allowing you to continue paging with an additional operation.
+The documents for all of the requests will be aggregated into a single [Dyngoose.QueryOutput](Output.md) response. If there are more objects, the request will contain a `LastEvaluatedKey` allowing you to continue paging with an additional operation.
 
 ```typescript
 const output = await Cat.search().filter('name').eq('Will').minimum(25)

@@ -1,14 +1,13 @@
 [![Build Status](https://github.com/benhutchins/dyngoose/workflows/workflow/badge.svg)](https://github.com/benhutchins/dyngoose/actions)
 [![npm version](https://badge.fury.io/js/dyngoose.svg)](https://badge.fury.io/js/dyngoose)
 [![Semantic Release enabled](https://img.shields.io/badge/%20%20%F0%9F%93%A6%F0%9F%9A%80-semantic--release-e10079.svg)](https://github.com/semantic-release/semantic-release)
-[![Dependabot Status](https://api.dependabot.com/badges/status?host=github&repo=benhutchins/dyngoose)](https://dependabot.com)
 
 
 # Dyngoose
 
 Elegant DynamoDB object modeling for Typescript.
 
-Let's face it, all good databases need good model casting. DynamoDB is powerful but libraries that used it were not. That's where Dyngoose comes in.
+Let's face it, all good databases need good model casting. DynamoDB is powerful but libraries for it were not. That's where Dyngoose comes in.
 
 ## Getting Started
 
@@ -16,15 +15,17 @@ Let's face it, all good databases need good model casting. DynamoDB is powerful 
 
 ## Features
 
-1. Cast your tables, attributes, and indexes using TypeScript classes.
-1. Generate your CloudFormation templates based on your code, or perform your table operations on demand; see [Deployment](./docs/Deployment.md).
+1. Cast your tables, attributes, and indexes using TypeScript interfaces.
+1. Generate your CloudFormation template resources, CDK constructs based on your code, or perform your table operations on demand; see [Deployment](./docs/Deployment.md).
 1. Intelligent and powerful querying syntax, see [Querying](./docs/Querying.md) and [MagicSearch](./docs/MagicSearch.md).
 1. Selectively update item attributes, prevents wasteful uploading of unchanged values.
 1. Data serialization, cast any JavaScript value into a DynamoDB attribute value.
-1. DynamoDB Accelerator (DAX) and Amazon X-Ray support, see [Connections](./docs/Connections.md).
-1. Optimizes connection to DynamoDB HTTP service using Keep-Alive, see [code segment](https://github.com/benhutchins/dyngoose/blob/master/src/connections/dynamodb-connection.ts#L32).
+1. Amazon X-Ray support, see [Connections](./docs/Connections.md).
 1. Incredibly easy [local development](./docs/Development.md), with support for seeding a local database.
 1. Supports [conditional writes](https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/WorkingWithItems.html#WorkingWithItems.ConditionalUpdate), see [Saving](./docs/Saving.md#saveconditions).
+1. Use `AsyncGenerators` to page through results efficiently, see [MagicSearch](./docs/MagicSearch.md).
+
+NOTE: DynamoDB Accelerator (DAX) support has been dropped as DAX is not yet supported by aws-sdk v3, see [aws-sdk-js-v3#4263](https://github.com/aws/aws-sdk-js-v3/issues/4263).
 
 ## Example Usage
 ```typescript
@@ -35,11 +36,20 @@ class Card extends Dyngoose.Table {
   @Dyngoose.Attribute.Number()
   public id: number
 
-  @Dyngoose.Attribute.String()
+  // Dyngoose supports inferring the attribute types based on the object types
+  // of your values, however, you can also specify strict attribute types,
+  // which offers more utilities
+  @Dyngoose.Attribute()
   public title: string
 
-  @Dyngoose.Attribute.Number()
+  @Dyngoose.Attribute()
   public number: number
+
+  @Dyngoose.Attribute.String({ trim: true })
+  public description: string
+
+  @Dyngoose.Attribute.StringSet()
+  public owners: Set<string>
 
   @Dyngoose.Attribute.Date({ timeToLive: true })
   public expiresAt: Date
@@ -69,26 +79,32 @@ const card2 = Card.new({
 // Save a record
 await card.save()
 
-// Batch Put
-await Card.documentClient.batchPut([
+// Batch Write
+const batchWrite = new Dyngoose.BatchWrite()
+batchWrite.put(
   Card.new(…),
   Card.new(…)
-])
+)
+await batchWrite.commit()
 
 // Get record by the primary key
 await Card.primaryKey.get({ id: 100, title: 'Title' })
 
-// BatchGet
-// This array is strongly typed such as Array<[number, string]> so don't worry.
-await Card.primaryKey.batchGet([
-  [100, 'Title'],
-  [200, 'Title2']
-])
+// Batch Get
+const batchGet = new Dyngoose.BatchGet()
+
+batchGet.get(
+  Card.primaryKey.fromKey({ id: 100, title: 'Title' }),
+  Card.primaryKey.fromKey({ id: 100, title: 'Title' })
+)
+
+await batchGet.retrieve()
 
 // Searching and Advanced Querying
 // Your values will be strictly typed based on the attribute being filtered
 await Card.search()
   .filter('id').eq(100)
+  .and()
   .filter('title').gte('Title')
   .exec()
 
@@ -102,18 +118,26 @@ const cards = await Card.primaryKey.query({
   title: ['>=', 'Title']
 })
 
-// you can loop through outputs, which is a native JavaScript array
+// You can loop through outputs, which is a native JavaScript array
 for (const card of cards) {
   console.log(card.id, card.title)
 }
 
-// the output contains additional properties
+// The output contains additional properties
 console.log(`Your query returned ${cards.count} and scanned ${cards.scannedCount} documents`)
 
 // Atomic counters, advanced update expressions
 // Increment or decrement automatically, based on the current value in DynamoDB
 card.set('number', 2, { operator: 'increment' }) // if the current value had been 5, it would now be 7
 card.set('number', 2, { operator: 'decrement' }) // if the current value had been 5, it would now be 3
+
+// Use the add or remove operator on Sets to only partially change an attribute
+card.set('owners', ['some value'], { operator: 'add' })
+
+// Use an abort controller all on read requests
+const abortController = new AbortController()
+await Card.primaryKey.get({ id: 10, title: 'abc' }, { abortSignal: abortController.signal })
+abortController.abort()
 ```
 
 ### TS Compiler Setting

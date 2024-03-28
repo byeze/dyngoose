@@ -1,23 +1,23 @@
-import { DynamoDB } from 'aws-sdk'
+import { type ReturnConsumedCapacity, type UpdateItemCommandInput } from '@aws-sdk/client-dynamodb'
 import * as _ from 'lodash'
-import { DynamoReturnValues } from '../interfaces'
-import { Table } from '../table'
+import { type AttributeMap, type DynamoReturnValues } from '../interfaces'
+import { type Table } from '../table'
 import { buildQueryExpression } from './expression'
-import { UpdateConditions } from './filters'
+import { type UpdateConditions } from './filters'
 
 export interface UpdateItemInputParams<T extends Table> {
   conditions?: UpdateConditions<T>
   returnValues?: DynamoReturnValues
-  returnConsumedCapacity?: DynamoDB.ReturnConsumedCapacity
+  returnConsumedCapacity?: ReturnConsumedCapacity
 }
 
-interface UpdateItemInput extends DynamoDB.UpdateItemInput {
+interface UpdateItemInput extends UpdateItemCommandInput {
   UpdateExpression: string
 }
 
 export function getUpdateItemInput<T extends Table>(record: T, params?: UpdateItemInputParams<T>): UpdateItemInput {
   const tableClass = (record.constructor as typeof Table)
-  const input: DynamoDB.UpdateItemInput = {
+  const input: UpdateItemCommandInput = {
     TableName: tableClass.schema.name,
     Key: record.getDynamoKey(),
     ReturnValues: params?.returnValues ?? 'NONE',
@@ -28,19 +28,21 @@ export function getUpdateItemInput<T extends Table>(record: T, params?: UpdateIt
   }
 
   const sets: string[] = []
+  const adds: string[] = []
+  const deletes: string[] = []
   const removes: string[] = []
-  const attributeNameMap: DynamoDB.ExpressionAttributeNameMap = {}
-  const attributeValueMap: DynamoDB.ExpressionAttributeValueMap = {}
+  const attributeNameMap: Record<string, string> = {}
+  const attributeValueMap: AttributeMap = {}
 
   let valueCounter = 0
 
   // we call toDynamo to have the record self-check for any dynamic attributes
-  record.toDynamo()
+  record.toDynamo(true)
 
   _.each(_.uniq(record.getUpdatedAttributes()), (attributeName, i) => {
     const attribute = tableClass.schema.getAttributeByName(attributeName)
     const value = attribute.toDynamo(record.getAttribute(attributeName))
-    const operator = record.getUpdateOperator(attributeName)
+    const operator = record.getAttributeUpdateOperator(attributeName)
     const slug = `#UA${valueCounter}`
 
     if (value != null) {
@@ -56,6 +58,10 @@ export function getUpdateItemInput<T extends Table>(record: T, params?: UpdateIt
         case 'append': sets.push(`${slug} = list_append(${slug}, :u${valueCounter})`); break
         case 'if_not_exists': sets.push(`${slug} = if_not_exists(${slug}, :u${valueCounter})`); break
 
+        // Set attribute operators
+        case 'add': adds.push(`${slug} :u${valueCounter}`); break
+        case 'delete': deletes.push(`${slug} :u${valueCounter}`); break
+
         case 'set':
         default: sets.push(`${slug} = :u${valueCounter}`); break
       }
@@ -64,7 +70,7 @@ export function getUpdateItemInput<T extends Table>(record: T, params?: UpdateIt
     }
   })
 
-  _.each(_.uniq(record.getDeletedAttributes()), (attrName, i) => {
+  _.each(_.uniq(record.getRemovedAttributes()), (attrName, i) => {
     const slug = `#DA${valueCounter}`
     attributeNameMap[slug] = attrName
     removes.push(slug)
@@ -75,6 +81,22 @@ export function getUpdateItemInput<T extends Table>(record: T, params?: UpdateIt
 
   if (sets.length > 0) {
     updateExpression += 'SET ' + sets.join(', ')
+  }
+
+  if (adds.length > 0) {
+    if (updateExpression.length > 0) {
+      updateExpression += ' '
+    }
+
+    updateExpression += 'ADD ' + adds.join(', ')
+  }
+
+  if (deletes.length > 0) {
+    if (updateExpression.length > 0) {
+      updateExpression += ' '
+    }
+
+    updateExpression += 'DELETE ' + deletes.join(', ')
   }
 
   if (removes.length > 0) {

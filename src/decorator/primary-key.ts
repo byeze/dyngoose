@@ -1,7 +1,7 @@
-import { ITable } from '../table'
+import { type ITable } from '../table'
 
-export function PrimaryKey(hashKey: string, rangeKey?: string) {
+export function PrimaryKey(primaryKey: string, sortKey?: string) {
   return (tableClass: ITable<any>, propertyKey: string) => {
-    tableClass.schema.setPrimaryKey(hashKey, rangeKey, propertyKey)
+    tableClass.schema.setPrimaryKey(primaryKey, sortKey, propertyKey)
   }
 }

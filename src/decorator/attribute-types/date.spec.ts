@@ -44,15 +44,42 @@ describe('AttributeType/Date', () => {
       await new Promise((resolve) => setTimeout(resolve, 2000))
 
       // save again
+      const updatedAtBeforeSave = record.updatedAt
       await record.save({ force: true }) // using force save so it saves, ignoring the fact there are no changes
 
       expect(record.updatedAt).to.be.a('date')
       expect(record.updatedAt).to.be.at.least(later)
       expect(record.updatedAt).to.be.at.within(later, new Date())
+      expect(record.updatedAt).to.not.eq(updatedAtBeforeSave)
 
       expect(record.getAttributeDynamoValue('createdAt')).to.deep.eq({
         S: record.createdAt.toISOString(),
       })
+    })
+
+    it('should set date to now when updating a partial record', async () => {
+      record.id = 42
+      record.title = 'date nowOnUpdate test 1'
+
+      expect(record.id).to.eq(42)
+      expect(record.updatedAt).to.be.a('date')
+
+      await record.save()
+      const updatedAtBeforeSave = record.updatedAt
+
+      // wait 2 seconds
+      await new Promise((resolve) => setTimeout(resolve, 2000))
+
+      const beforeTime = new Date()
+      record = TestableTable.primaryKey
+        .fromKey({ id: 42, title: 'date nowOnUpdate test 1' })
+        .setValues({ testString: 'make some magic' })
+      await record.save({ force: true })
+      const afterTime = new Date()
+
+      expect(record.updatedAt).to.be.a('date')
+      expect(record.updatedAt).to.not.be.eq(updatedAtBeforeSave)
+      expect(record.updatedAt).to.be.within(beforeTime, afterTime)
     })
   })
 

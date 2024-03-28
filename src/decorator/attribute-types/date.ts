@@ -1,9 +1,9 @@
-import { DynamoDB } from 'aws-sdk'
+import { type AttributeValue } from '@aws-sdk/client-dynamodb'
 import { DynamoAttributeType } from '../../dynamo-attribute-types'
 import { SchemaError } from '../../errors'
-import { IAttributeType } from '../../interfaces'
-import { DateAttributeMetadata } from '../../metadata/attribute-types/date.metadata'
-import { Table } from '../../table'
+import { type IAttributeType } from '../../interfaces'
+import { type DateAttributeMetadata } from '../../metadata/attribute-types/date.metadata'
+import { type Table } from '../../table'
 import { AttributeType } from '../../tables/attribute-type'
 import { stringToNumber } from './utils'
 
@@ -44,11 +44,7 @@ export class DateAttributeType extends AttributeType<Value, Metadata> implements
     return null
   }
 
-  toDynamo(dt: Value): DynamoDB.AttributeValue {
-    if (this.metadata?.nowOnUpdate === true) {
-      dt = new Date()
-    }
-
+  toDynamo(dt: Value): AttributeValue {
     if (this.metadata?.unixTimestamp === true || this.metadata?.millisecondTimestamp === true || this.metadata?.timeToLive === true) {
       return {
         N: this.parseDate(dt).toString(),
@@ -60,7 +56,7 @@ export class DateAttributeType extends AttributeType<Value, Metadata> implements
     }
   }
 
-  fromDynamo(attributeValue: DynamoDB.AttributeValue): Value | null {
+  fromDynamo(attributeValue: AttributeValue): Value | null {
     // whenever the value is stored as a number, it must be a timestamp
     // the timestamp will have been stored in UTC
     if (attributeValue.N != null) {
@@ -114,7 +110,7 @@ export class DateAttributeType extends AttributeType<Value, Metadata> implements
         // parse YYYY-MM-DD and ensure we create the Date object in UTC
         const b = dt.split('-').map((d) => parseInt(d, 10))
         dt = new Date(Date.UTC(b[0], --b[1], b[2]))
-      // if timestamp, assume the value is a timestamp
+      // if configured as a timestamp, assume the value is a numeric string as a timestamp
       } else if (this.metadata?.unixTimestamp === true || this.metadata?.timeToLive === true) {
         dt = new Date(stringToNumber(dt) * 1000)
       } else if (this.metadata?.millisecondTimestamp === true) {

@@ -1,4 +1,6 @@
-import { AttributeMetadata } from '../attribute'
+import { type AttributeMetadata } from '../attribute'
 
-export interface NumberAttributeMetadata extends AttributeMetadata<number | BigInt> {
+export type NumberValue = number | bigint
+
+export interface NumberAttributeMetadata extends AttributeMetadata<NumberValue> {
 }

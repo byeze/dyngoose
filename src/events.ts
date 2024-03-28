@@ -1,7 +1,7 @@
-import { DynamoDB } from 'aws-sdk'
-import { Table } from './table'
-import { DynamoReturnValues } from './interfaces'
-import { UpdateConditions } from './query/filters'
+import { type DeleteItemCommandOutput, type PutItemCommandOutput, type ReturnConsumedCapacity, type UpdateItemCommandOutput } from '@aws-sdk/client-dynamodb'
+import { type Table } from './table'
+import { type AttributeMap, type DynamoReturnValues } from './interfaces'
+import { type UpdateConditions } from './query/filters'
 
 interface BaseEvent<T extends Table> {
   /**
@@ -35,7 +35,7 @@ export interface SaveEvent<T extends Table> extends BaseEvent<T> {
    */
   returnValues?: DynamoReturnValues
 
-  returnConsumedCapacity?: DynamoDB.ReturnConsumedCapacity
+  returnConsumedCapacity?: ReturnConsumedCapacity
 
   /**
    * Operationally set the save operator.
@@ -66,9 +66,15 @@ export interface BeforeSaveEvent<T extends Table> extends SaveEvent<T> {
 }
 
 export interface AfterSaveEvent<T extends Table> extends BeforeSaveEvent<T> {
-  output: DynamoDB.PutItemOutput | DynamoDB.UpdateItemOutput
-  deletedAttributes: string[]
+  output: PutItemCommandOutput | UpdateItemCommandOutput
+  originalValues: AttributeMap
+  removedAttributes: string[]
   updatedAttributes: string[]
+
+  /**
+   * @deprecated
+   */
+  deletedAttributes: string[]
 }
 
 export interface DeleteEvent<T extends Table> extends BaseEvent<T> {
@@ -82,5 +88,5 @@ export interface BeforeDeleteEvent<T extends Table> extends DeleteEvent<T> {
 }
 
 export interface AfterDeleteEvent<T extends Table> extends BeforeDeleteEvent<T> {
-  output: DynamoDB.DeleteItemOutput
+  output: DeleteItemCommandOutput
 }

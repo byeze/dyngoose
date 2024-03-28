@@ -21,12 +21,15 @@ describe('Table', () => {
       expect(reloadedCard.id).to.eq(10)
       expect(reloadedCard.get('id')).to.eq(10)
       expect(reloadedCard.title).to.eq('100')
+      expect(reloadedCard.getUpdatedAttributes().length).to.eq(0)
     }
   })
 
   describe('.remove', () => {
     it('should allow attributes to be removed', async () => {
-      const card = TestableTable.new()
+      const card = TestableTable.new({
+        testNumberSet: [1, 2, 3],
+      })
       card.id = 101
       card.title = '101'
       card.generic = 'something'
@@ -36,52 +39,21 @@ describe('Table', () => {
 
       await card.save()
 
-      const reloadedCard = await TestableTable.primaryKey.get(101, '101')
+      const reloadedCard = (await TestableTable.primaryKey.get(101, '101'))!
       expect(reloadedCard).to.be.instanceof(TestableTable)
 
-      if (reloadedCard != null) {
-        expect(reloadedCard.id).to.eq(101)
-        expect(reloadedCard.get('id')).to.eq(101)
-        expect(reloadedCard.title).to.eq('101')
-        expect(reloadedCard.generic).to.eq(null)
-        expect(reloadedCard.defaultedString).to.eq('SomeDefault')
-        expect(reloadedCard.testString).to.eq('value is set')
-      }
-    })
-  })
+      expect(reloadedCard.id).to.eq(101)
+      expect(reloadedCard.get('id')).to.eq(101)
+      expect(reloadedCard.title).to.eq('101')
+      expect(reloadedCard.generic).to.eq(null)
+      expect(reloadedCard.defaultedString).to.eq('SomeDefault')
+      expect(reloadedCard.testString).to.eq('value is set')
+      expect(reloadedCard.testNumberSet).to.deep.eq(new Set([1, 2, 3]))
+      expect(reloadedCard.getUpdatedAttributes().length).to.eq(0)
 
-  describe('.updateSet', () => {
-    it('should update a set', async () => {
-      const card = TestableTable.new({
-        id: 98,
-        title: '98',
-        testStringSet: [
-          '',
-          'test',
-          'strings',
-        ],
-        testNumberSet: [
-          1,
-          2,
-          3,
-        ],
-      })
-
-      expect(card.testStringSet).to.deep.eq(['', 'test', 'strings'])
-      expect(card.testNumberSet).to.deep.eq([1, 2, 3])
-
-      card.updateSet('testStringSet', ['', 'test', 'test', 'abc'])
-
-      expect(card.testStringSet).to.deep.eq(['test', 'abc'], 'set was cleaned by updateSet')
-
-      card.updateSet('testStringSet', ['abc', 'test'])
-      card.updateSet('testNumberSet', [3, 2, 1])
-
-      expect(card.testStringSet).to.deep.eq(['test', 'abc'], 'set should not have been changed')
-      expect(card.testNumberSet).to.deep.eq([1, 2, 3], 'set should not have been changed')
-
-      card.updateSet('testStringSet', ['abc'])
-      expect(card.testStringSet).to.deep.eq(['abc'], 'test should have been removed from testStringSet')
+      reloadedCard.generic = 'should be considered an update'
+      expect(reloadedCard.getUpdatedAttributes()).to.deep.eq(['generic'])
+      expect(reloadedCard.getSaveOperation()).to.eq('update')
     })
   })
 
@@ -91,13 +63,15 @@ describe('Table', () => {
       title: '98',
       testString: 'some value',
       testNumber: 11,
-      testNumberSet: [1, 2, 3],
+      testNumberSet: new Set([1, 2, 3]),
+      testStringSet: ['1', '2', '3'],
       testAttributeNaming: 'test',
     })
     await card.save()
     expect(card.testNumber).to.eq(11, 'num eq 11')
 
     card.set('testNumber', 5, { operator: 'decrement' })
+    expect(card.getUpdatedAttributes()).to.deep.eq(['testNumber'])
     await card.save()
 
     const reloadedCard = await TestableTable.primaryKey.get(card)
@@ -118,6 +92,8 @@ describe('Table', () => {
 
     card.testString = ''
     expect(card.testString).to.eq(null, 'cleared strings become null, because DynamoDB does not allow empty string values')
+    expect(card.getUpdatedAttributes()).to.deep.eq([])
+    expect(card.getRemovedAttributes()).to.deep.eq(['testString'])
     await card.save()
 
     const reloadedCard = await TestableTable.primaryKey.get(10, '100')
@@ -197,7 +173,7 @@ describe('Table', () => {
       await newRecord.save()
 
       // load the record we just created
-      const record = await TestableTable.primaryKey.fromKey({
+      const record = TestableTable.primaryKey.fromKey({
         id: 99,
         title: 'new record',
       })
@@ -255,7 +231,14 @@ describe('Table', () => {
     const record = TestableTable.new()
     expect(record.id).to.eq(1)
     expect(record.defaultedString).to.eq('SomeDefault')
-    expect(record.testNumberSetWithDefaults).to.deep.eq([42, 420])
+    expect(Array.from(record.testNumberSetWithDefaults)).to.deep.eq([42, 420])
+  })
+
+  it('should apply default values even when undefined is given', () => {
+    const record = TestableTable.new({ defaultedString: undefined })
+    expect(record.id).to.eq(1)
+    expect(record.defaultedString).to.eq('SomeDefault')
+    expect(Array.from(record.testNumberSetWithDefaults)).to.deep.eq([42, 420])
   })
 
   it('should not apply defaults when the record is loaded from DynamoDB', () => {

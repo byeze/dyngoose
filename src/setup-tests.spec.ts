@@ -2,6 +2,7 @@ import { Dyngoose } from '.'
 
 @Dyngoose.$Table({
   name: `testable-${Math.random()}`,
+  backup: false,
 })
 export class TestableTable extends Dyngoose.Table {
   @Dyngoose.$PrimaryKey('id', 'title')
@@ -18,6 +19,9 @@ export class TestableTable extends Dyngoose.Table {
 
   @Dyngoose.Attribute.Number({ default: 1 })
   public id: number
+
+  @Dyngoose.Attribute()
+  public dynamic: number | string
 
   @Dyngoose.Attribute.String()
   public title: string
@@ -50,7 +54,10 @@ export class TestableTable extends Dyngoose.Table {
   public testString: string
 
   @Dyngoose.Attribute.StringSet()
-  public testStringSet: string[]
+  public testStringSet: Set<string>
+
+  @Dyngoose.Attribute.StringSet({ array: true })
+  public testStringSetArray: string[]
 
   @Dyngoose.Attribute.String({ lowercase: true })
   public lowercaseString: string
@@ -65,16 +72,24 @@ export class TestableTable extends Dyngoose.Table {
   public testNumber: number
 
   @Dyngoose.Attribute.NumberSet()
-  public testNumberSet?: Array<BigInt | number> | null
+  public testNumberSet: Set<bigint | number> | null
 
-  @Dyngoose.Attribute.NumberSet({ default: () => [42, 420] })
-  public testNumberSetWithDefaults: number[]
+  @Dyngoose.Attribute.NumberSet({ default: () => new Set([42, 420]) })
+  public testNumberSetWithDefaults: Set<number>
 
   @Dyngoose.Attribute.Number()
-  public testBigInt: BigInt
+  public testBigInt: bigint
 
   @Dyngoose.Attribute.String({ name: 'testAttributeNameNotMatchingPropertyName' })
   public testAttributeNaming: string
+
+  @Dyngoose.Attribute.Map({
+    name: 'someMap',
+    attributes: {
+      property1: Dyngoose.Attribute.String({ name: 'someProperty1' }),
+    },
+  })
+  public testMap?: { property1?: string }
 }
 
 before(async () => {

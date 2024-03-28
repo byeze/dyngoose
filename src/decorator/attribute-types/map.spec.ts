@@ -7,6 +7,7 @@ interface ITestMap {
   last: string
   level: number
   nick?: string
+  gender?: string
 }
 
 interface ITestContactMap {
@@ -33,15 +34,16 @@ export class MapTestTable extends Dyngoose.Table {
   public static readonly documentClient: Dyngoose.DocumentClient<MapTestTable>
 
   @Dyngoose.Attribute.Number()
-  id: number
+    id: number
 
   @Dyngoose.Attribute.Map({
     attributes: {
-    first: Dyngoose.Attribute.String(),
-    middle: Dyngoose.Attribute.String(),
-    last: Dyngoose.Attribute.String(),
-    level: Dyngoose.Attribute.Number(),
-    nick: Dyngoose.Attribute.String(),
+      first: Dyngoose.Attribute.String(),
+      middle: Dyngoose.Attribute.String(),
+      last: Dyngoose.Attribute.String(),
+      level: Dyngoose.Attribute.Number(),
+      nick: Dyngoose.Attribute.String(),
+      gender: Dyngoose.Attribute.String({ name: 'Gender' }),
     },
     })
   public person: ITestMap
@@ -65,6 +67,15 @@ export class MapTestTable extends Dyngoose.Table {
     },
     })
   public contact: ITestContactMap
+
+  @Dyngoose.Attribute.Map({
+    attributes: {},
+    arbitraryAttributes: 'marshall',
+  })
+  public dynamicMap: {
+    dynamicAttribute: string
+    emptyAttribute?: string
+  }
 }
 
 describe('AttributeType/Map', () => {
@@ -258,7 +269,7 @@ describe('AttributeType/Map', () => {
 
   it('should support use of fromJSON to support REST APIs and DB Seeding', async () => {
     const record = MapTestTable.fromJSON({
-      id: 3,
+      id: 5,
       contact: {
         name: {
           first: 'Homer',
@@ -276,5 +287,66 @@ describe('AttributeType/Map', () => {
     expect(record.contact.address?.line1).to.eq('742 Evergreen Terrace')
     expect(record.contact.dob).to.be.instanceOf(Date)
     expect(record.contact.dob?.toISOString()).to.eq('1956-05-12T00:00:00.000Z')
+  })
+
+  it('maps should be able to specify attribute names independent from property names', async () => {
+    const record = MapTestTable.new({
+      id: 6,
+      person: {
+        first: 'John',
+        middle: 'Jacobs',
+        last: 'Smith',
+        level: 1,
+        gender: 'MALE',
+        // nick is left empty to ensure optional properties work
+      },
+    })
+
+    await record.save()
+
+    const loaded = await MapTestTable.primaryKey.get(6)
+
+    // Should be able to change name of string attribute in map
+    expect(loaded?.getAttributeDynamoValue('person')).to.deep.eq({
+      M: {
+        first: { S: 'John' },
+        middle: { S: 'Jacobs' },
+        last: { S: 'Smith' },
+        level: { N: '1' },
+        Gender: { S: 'MALE' },
+      },
+    })
+
+    expect(loaded?.toJSON()).to.deep.eq({
+      id: 6,
+      person: {
+        first: 'John',
+        middle: 'Jacobs',
+        last: 'Smith',
+        level: 1,
+        gender: 'MALE',
+      },
+    })
+  })
+
+  it('maps should support dynamic properties', async () => {
+    const record = MapTestTable.new({
+      id: 7,
+      dynamicMap: {
+        dynamicAttribute: 'test',
+        emptyAttribute: undefined,
+      },
+    })
+
+    await record.save()
+
+    const loaded = await MapTestTable.primaryKey.get(record.id)
+
+    // Should be able to change name of string attribute in map
+    expect(loaded?.getAttributeDynamoValue('dynamicMap')).to.deep.eq({
+      M: {
+        dynamicAttribute: { S: 'test' },
+      },
+    })
   })
 })

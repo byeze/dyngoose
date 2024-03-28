@@ -7,7 +7,7 @@ interface ITestList {
 
 @Dyngoose.$Table({
   name: `ListTest-${Math.random()}`,
-  })
+})
 export class ListTestTable extends Dyngoose.Table {
   @Dyngoose.$PrimaryKey('id')
   public static readonly primaryKey: Dyngoose.Query.PrimaryKey<ListTestTable, number, void>

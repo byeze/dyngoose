@@ -1,12 +1,39 @@
-import { DynamoDB } from 'aws-sdk'
+import { type AttributeValue } from '@aws-sdk/client-dynamodb'
+import { isArray, isSet } from 'lodash'
 import { DynamoAttributeType } from '../../dynamo-attribute-types'
-import { IAttributeType } from '../../interfaces'
-import { BinarySetAttributeMetadata } from '../../metadata/attribute-types/binary-set.metadata'
+import { ValidationError } from '../../errors'
+import { type IAttributeType } from '../../interfaces'
+import { type BinarySetAttributeMetadata, type BinarySetValue } from '../../metadata/attribute-types/binary-set.metadata'
 import { AttributeType } from '../../tables/attribute-type'
 
-type Value = DynamoDB.BinarySetAttributeValue
 type Metadata = BinarySetAttributeMetadata
 
-export class BinarySetAttributeType extends AttributeType<Value, Metadata> implements IAttributeType<Value> {
+export class BinarySetAttributeType extends AttributeType<BinarySetValue, Metadata> implements IAttributeType<BinarySetValue> {
   type = DynamoAttributeType.BinarySet
+
+  toDynamo(values: BinarySetValue): AttributeValue {
+    if (!isSet(values) && !isArray(values)) {
+      throw new ValidationError(`Expected ${this.propertyName} to be an array of binary values`)
+    }
+
+    return {
+      BS: Array.from(values),
+    }
+  }
+
+  fromDynamo(value: AttributeValue): BinarySetValue | null {
+    // this needs to return null when there is no value, so the default value can be set if necessary
+    // returning an empty array means there was a value from DynamoDB with a Set containing no items
+    if (value.BS == null) {
+      return null
+    } else if (this.metadata?.array === true) {
+      return value.BS
+    } else {
+      const binarySet: BinarySetValue = new Set()
+      value.BS.forEach((item) => {
+        binarySet.add(item)
+      })
+      return binarySet
+    }
+  }
 }

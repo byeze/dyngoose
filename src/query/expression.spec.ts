@@ -8,7 +8,7 @@ describe('query/expression', () => {
     second: string
   }
 
-  @Dyngoose.$Table({ name: 'QueryExpressionDummyTable' })
+  @Dyngoose.$Table({ name: 'QueryExpressionDummyTable', backup: false })
   class DummyTable extends Dyngoose.Table {
     @Dyngoose.$PrimaryKey('id', 'customer')
     public static readonly primaryKey: Dyngoose.Query.PrimaryKey<DummyTable, string, string>
@@ -35,11 +35,12 @@ describe('query/expression', () => {
     public someBool: boolean
 
     @Dyngoose.Attribute.StringSet()
-    public someStrings: string[]
+    public someStrings: Set<string>
 
     @Dyngoose.Attribute.Map<ISomeMap>({
+      name: 'someTestMap',
       attributes: {
-        first: Dyngoose.Attribute.String(),
+        first: Dyngoose.Attribute.String({ name: 'someFirst' }),
         second: Dyngoose.Attribute.String(),
       },
     })
@@ -60,7 +61,7 @@ describe('query/expression', () => {
     }
 
     @Dyngoose.Attribute.String()
-    someNonExistAttr: string
+      someNonExistAttr: string
   }
 
   const schema = DummyTable.schema
@@ -106,8 +107,8 @@ describe('query/expression', () => {
       })).to.deep.equal({
         FilterExpression: '#a00.#a01 = :v0',
         ExpressionAttributeNames: {
-          '#a00': 'someMap',
-          '#a01': 'first',
+          '#a00': 'someTestMap',
+          '#a01': 'someFirst',
         },
         ExpressionAttributeValues: {
           ':v0': { S: 'bobby' },
@@ -246,6 +247,21 @@ describe('query/expression', () => {
         FilterExpression: 'contains(#a0, :v0) AND #a1 = :v1',
         ExpressionAttributeNames: {
           '#a0': 'someStrings',
+          '#a1': 'someBool',
+        },
+        ExpressionAttributeValues: {
+          ':v0': { S: 'hello world' },
+          ':v1': { BOOL: true },
+        },
+      })
+
+      expect(buildQueryExpression(schema, {
+        someString: ['not contains', 'hello world'],
+        someBool: true,
+      })).to.deep.equal({
+        FilterExpression: 'not contains(#a0, :v0) AND #a1 = :v1',
+        ExpressionAttributeNames: {
+          '#a0': 'someString',
           '#a1': 'someBool',
         },
         ExpressionAttributeValues: {

@@ -1,10 +1,8 @@
-import { AttributeMetadata } from '../attribute'
+import { type marshallOptions, type unmarshallOptions } from '@aws-sdk/util-dynamodb'
 
-export type ListType = [
-  {
-    [propertyName: string]: any
-  } |
-  any
-]
+import { type AttributeMetadata } from '../attribute'
 
-export interface ListAttributeMetadata extends Partial<AttributeMetadata<ListType>> {}
+export interface ListAttributeMetadata extends AttributeMetadata<any[]> {
+  marshallOptions?: marshallOptions
+  unmarshallOptions?: unmarshallOptions
+}
