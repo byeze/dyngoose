@@ -1,6 +1,6 @@
 {
   "name": "@ezee/dyngoose",
-  "version": "4.10.2",
+  "version": "4.11.1",
   "description": "Elegant DynamoDB object modeling for Typescript",
   "keywords": [
     "dynamo",
@@ -76,9 +76,7 @@
     }
   },
   "commitlint": {
-    "extends": [
-      "@commitlint/config-conventional"
-    ]
+    "extends": ["@commitlint/config-conventional"]
   },
   "peerDependencies": {
     "@aws-sdk/client-dynamodb": "^3.279.0"
